@@ -22,7 +22,7 @@
 // ================================================================
 // ⚠️  ALTERE AQUI O SEU NÚMERO DE WHATSAPP (formato: 55XXXXXXXXXXX)
 // ================================================================
-var WHATSAPP_NUMBER = "5500000000000";
+var WHATSAPP_NUMBER = "5538998926729";
 
 // ================================================================
 //  Categorias — altere os labels se quiser renomear no site
@@ -206,13 +206,13 @@ var PRODUCTS = [
   {
     id: 13,
     category: "combos",
-    name: "Coqueteleira Dark Wolf",
+    name: "Coqueteleira",
     brand: "Dark Wolf",
     weight: "750ml",
     badge: null,
-    description: "Coqueteleira oficial Dark Wolf 750ml com compartimento extra e misturador em espiral. Durável, estilosa e funcional.",
+    description: "Coqueteleira 750ml com compartimento extra e misturador em espiral. Durável, estilosa e funcional.",
     price: 24.90,
-    image: "assets/images/products/coqueteleira-dark-wolf.jpg",
+    image: "assets/images/products/coqueteleira.jpg",
     brandColor: "#2a2a2a",
     brandInitials: "DW"
   },

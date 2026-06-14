@@ -41,7 +41,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet">
 
   <!-- ── Icons ──────────────────────────────────────── -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <!-- ── CSS ────────────────────────────────────────── -->
   <link rel="stylesheet" href="assets/css/variables.css">
@@ -161,18 +161,18 @@
 
           <div class="hero__stats reveal reveal-delay-4" aria-label="Números da Alphenix">
             <div class="hero__stat">
-              <span class="hero__stat-value text-gradient">+500</span>
-              <span class="hero__stat-label">Clientes</span>
+              <span class="hero__stat-value text-gradient">Melhores Preços</span>
+              <span class="hero__stat-label">Da Região</span>
             </div>
             <div class="hero__stat-sep" aria-hidden="true"></div>
             <div class="hero__stat">
-              <span class="hero__stat-value text-gradient">+13</span>
+              <span class="hero__stat-value text-gradient">Os Melhores</span>
               <span class="hero__stat-label">Produtos</span>
             </div>
             <div class="hero__stat-sep" aria-hidden="true"></div>
             <div class="hero__stat">
               <span class="hero__stat-value text-gradient">100%</span>
-              <span class="hero__stat-label">Original</span>
+              <span class="hero__stat-label">Originais</span>
             </div>
           </div>
         </div>
@@ -323,6 +323,85 @@
     </section>
 
   </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  PRODUCT DETAIL MODAL                         -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="pdp-overlay" id="pdpOverlay" role="dialog" aria-modal="true" aria-label="Detalhes do produto" aria-hidden="true">
+    <div class="pdp-modal" id="pdpModal">
+
+      <!-- Close -->
+      <button class="pdp-close" id="pdpClose" aria-label="Fechar detalhes do produto">
+        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+      </button>
+
+      <!-- ── Gallery (left / top on mobile) ────── -->
+      <div class="pdp-gallery">
+        <div class="pdp-gallery__stage" id="pdpStage">
+          <!-- Prev arrow -->
+          <button class="pdp-arrow pdp-arrow--prev" id="pdpPrev" aria-label="Imagem anterior">
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          </button>
+
+          <!-- Main image -->
+          <img
+            src=""
+            alt=""
+            class="pdp-gallery__img"
+            id="pdpMainImg"
+          >
+
+          <!-- Placeholder (when image fails) -->
+          <div class="pdp-gallery__placeholder" id="pdpPlaceholder" style="display:none">
+            <span id="pdpPlaceholderText"></span>
+          </div>
+
+          <!-- Next arrow -->
+          <button class="pdp-arrow pdp-arrow--next" id="pdpNext" aria-label="Próxima imagem">
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <!-- Thumbnails strip -->
+        <div class="pdp-gallery__thumbs" id="pdpThumbs" aria-label="Galeria de imagens"></div>
+      </div>
+
+      <!-- ── Info (right / bottom on mobile) ──── -->
+      <div class="pdp-body" id="pdpBody">
+
+        <div class="pdp-body__header">
+          <div class="pdp-body__meta">
+            <span class="pdp-body__brand" id="pdpBrand"></span>
+            <span class="pdp-body__weight" id="pdpWeight"></span>
+          </div>
+          <div class="pdp-body__badge" id="pdpBadge"></div>
+          <h2 class="pdp-body__name" id="pdpName"></h2>
+        </div>
+
+        <div class="pdp-body__divider"></div>
+
+        <p class="pdp-body__description" id="pdpDescription"></p>
+
+        <div class="pdp-body__footer">
+          <div class="pdp-body__price">
+            <span class="pdp-body__price-curr">R$</span>
+            <span class="pdp-body__price-val" id="pdpPrice"></span>
+          </div>
+          <a
+            href="#"
+            class="btn btn--whatsapp pdp-body__cta"
+            id="pdpWA"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+            Comprar pelo WhatsApp
+          </a>
+        </div>
+
+      </div><!-- /.pdp-body -->
+    </div><!-- /.pdp-modal -->
+  </div><!-- /.pdp-overlay -->
 
   <!-- ══════════════════════════════════════════════ -->
   <!--  FOOTER                                       -->
