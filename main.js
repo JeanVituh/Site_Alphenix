@@ -1,0 +1,449 @@
+/**
+ * ╔══════════════════════════════════════════════════════════════╗
+ * ║              ALPHENIX — Main Script                         ║
+ * ║  Loader · Header · Embers · Filtros · Produtos · WhatsApp  ║
+ * ╚══════════════════════════════════════════════════════════════╝
+ */
+
+(function () {
+  'use strict';
+
+  /* ══════════════════════════════════════════════════════
+     DOM REFS
+     ══════════════════════════════════════════════════════ */
+  const $loader        = document.getElementById('loader');
+  const $header        = document.getElementById('header');
+  const $hamburger     = document.getElementById('hamburger');
+  const $mobileMenu    = document.getElementById('mobileMenu');
+  const $filterTabs    = document.getElementById('filterTabs');
+  const $productsGrid  = document.getElementById('productsGrid');
+  const $productsEmpty = document.getElementById('productsEmpty');
+  const $embers        = document.getElementById('embers');
+
+  /* ══════════════════════════════════════════════════════
+     STATE
+     ══════════════════════════════════════════════════════ */
+  let activeCategory  = 'all';
+  let revealObserver  = null;
+  let embersInterval  = null;
+
+  /* ══════════════════════════════════════════════════════
+     LOADER
+     ══════════════════════════════════════════════════════ */
+  function initLoader() {
+    const hideLoader = function () {
+      setTimeout(function () {
+        $loader.classList.add('loader--hiding');
+        document.body.classList.add('loaded');
+        setTimeout(function () {
+          $loader.style.display = 'none';
+        }, 750);
+      }, 1900);
+    };
+
+    if (document.readyState === 'complete') {
+      hideLoader();
+    } else {
+      window.addEventListener('load', hideLoader);
+      // Fallback: never block more than 4s
+      setTimeout(hideLoader, 4000);
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════
+     HEADER — scroll behaviour
+     ══════════════════════════════════════════════════════ */
+  function initHeader() {
+    function onScroll() {
+      $header.classList.toggle('scrolled', window.scrollY > 60);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ══════════════════════════════════════════════════════
+     MOBILE MENU
+     ══════════════════════════════════════════════════════ */
+  function initMobileMenu() {
+    $hamburger.addEventListener('click', function () {
+      var isOpen = $mobileMenu.classList.toggle('active');
+      $hamburger.classList.toggle('active', isOpen);
+      $hamburger.setAttribute('aria-expanded', String(isOpen));
+      $mobileMenu.setAttribute('aria-hidden', String(!isOpen));
+      document.body.classList.toggle('menu-open', isOpen);
+    });
+
+    // Close on link click
+    $mobileMenu.querySelectorAll('.mobile-menu__link, .mobile-menu__cta').forEach(function (el) {
+      el.addEventListener('click', closeMobileMenu);
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function (e) {
+      if ($mobileMenu.classList.contains('active') && !$header.contains(e.target)) {
+        closeMobileMenu();
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && $mobileMenu.classList.contains('active')) {
+        closeMobileMenu();
+      }
+    });
+  }
+
+  function closeMobileMenu() {
+    $mobileMenu.classList.remove('active');
+    $hamburger.classList.remove('active');
+    $hamburger.setAttribute('aria-expanded', 'false');
+    $mobileMenu.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('menu-open');
+  }
+
+  /* ══════════════════════════════════════════════════════
+     SCROLL REVEAL
+     ══════════════════════════════════════════════════════ */
+  function initReveal() {
+    observeReveal();
+  }
+
+  function observeReveal() {
+    if (revealObserver) {
+      revealObserver.disconnect();
+    }
+
+    revealObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.08, rootMargin: '0px 0px -32px 0px' }
+    );
+
+    document.querySelectorAll('.reveal').forEach(function (el) {
+      // Only observe elements not yet visible
+      if (!el.classList.contains('visible')) {
+        revealObserver.observe(el);
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     EMBER PARTICLES
+     ══════════════════════════════════════════════════════ */
+  function initEmbers() {
+    if (!$embers) return;
+
+    function spawnEmber() {
+      var e = document.createElement('div');
+      e.className = 'ember';
+
+      var size  = (2 + Math.random() * 4).toFixed(1);
+      var drift = ((Math.random() - 0.5) * 120).toFixed(0);
+      var dur   = (3.5 + Math.random() * 4).toFixed(1);
+      var delay = (Math.random() * 1.5).toFixed(1);
+      var left  = (5 + Math.random() * 90).toFixed(1);
+      var bottom = (Math.random() * 18).toFixed(1);
+
+      e.style.cssText = [
+        'left:'             + left   + '%',
+        'bottom:'           + bottom + '%',
+        'width:'            + size   + 'px',
+        'height:'           + size   + 'px',
+        '--drift:'          + drift  + 'px',
+        'animation-duration:' + dur   + 's',
+        'animation-delay:'  + delay  + 's',
+      ].join(';');
+
+      $embers.appendChild(e);
+
+      var totalMs = (parseFloat(dur) + parseFloat(delay) + 0.5) * 1000;
+      setTimeout(function () {
+        if (e.parentNode) e.parentNode.removeChild(e);
+      }, totalMs);
+    }
+
+    embersInterval = setInterval(spawnEmber, 280);
+
+    // Pause embers when tab is hidden (performance)
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) {
+        clearInterval(embersInterval);
+      } else {
+        embersInterval = setInterval(spawnEmber, 280);
+      }
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     WHATSAPP HELPERS
+     ══════════════════════════════════════════════════════ */
+  function getWaURL(msg) {
+    return 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
+  }
+
+  function getProductWaURL(product) {
+    var weight = product.weight ? ' (' + product.weight + ')' : '';
+    var price  = 'R$ ' + product.price.toFixed(2).replace('.', ',');
+    var msg = [
+      'Olá! Tenho interesse no produto:',
+      '',
+      '*' + product.name + ' - ' + product.brand + weight + '*',
+      'Preço: *' + price + '*',
+      '',
+      'Poderia me passar mais informações?',
+    ].join('\n');
+    return getWaURL(msg);
+  }
+
+  function getGeneralWaURL() {
+    return getWaURL('Olá! Quero saber mais sobre os produtos Alphenix. 🔥');
+  }
+
+  function initWhatsAppLinks() {
+    var generalURL = getGeneralWaURL();
+    var ids = ['heroWhatsApp', 'ctaBannerBtn', 'footerWA', 'footerContactWA'];
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.href = generalURL;
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     FILTER TABS
+     ══════════════════════════════════════════════════════ */
+  function initFilters() {
+    $filterTabs.innerHTML = CATEGORIES.map(function (cat) {
+      var isActive = cat.id === 'all' ? ' active' : '';
+      return [
+        '<button class="filter-tab' + isActive + '" data-category="' + cat.id + '" role="tab" aria-selected="' + (cat.id === 'all') + '">',
+        '  <i class="fa-solid ' + cat.icon + '" aria-hidden="true"></i>',
+        '  <span>' + cat.label + '</span>',
+        '</button>',
+      ].join('');
+    }).join('');
+
+    $filterTabs.addEventListener('click', function (e) {
+      var btn = e.target.closest('.filter-tab');
+      if (!btn) return;
+
+      var cat = btn.dataset.category;
+      if (cat === activeCategory) return;
+
+      activeCategory = cat;
+
+      // Update active state + ARIA
+      $filterTabs.querySelectorAll('.filter-tab').forEach(function (b) {
+        var isThis = b.dataset.category === cat;
+        b.classList.toggle('active', isThis);
+        b.setAttribute('aria-selected', String(isThis));
+      });
+
+      // Re-render with transition
+      $productsGrid.style.opacity = '0';
+      $productsGrid.style.transform = 'translateY(8px)';
+      $productsGrid.style.transition = 'opacity 180ms, transform 180ms';
+
+      setTimeout(function () {
+        renderProducts(getFilteredProducts());
+        $productsGrid.style.opacity = '1';
+        $productsGrid.style.transform = 'translateY(0)';
+      }, 180);
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     PRODUCTS
+     ══════════════════════════════════════════════════════ */
+  function getFilteredProducts() {
+    if (activeCategory === 'all') return PRODUCTS;
+    return PRODUCTS.filter(function (p) { return p.category === activeCategory; });
+  }
+
+  function renderProducts(products) {
+    if (products.length === 0) {
+      $productsGrid.innerHTML = '';
+      $productsEmpty.style.display = 'flex';
+      return;
+    }
+
+    $productsEmpty.style.display = 'none';
+
+    $productsGrid.innerHTML = products.map(function (product, i) {
+      var delayClass = 'reveal-delay-' + ((i % 4) + 1);
+      var waURL      = getProductWaURL(product);
+      var hasBadge   = product.badge ? true : false;
+      var hasWeight  = product.weight ? true : false;
+
+      // Badge HTML
+      var badgeHTML = hasBadge
+        ? '<span class="product-card__badge">' + escapeHTML(product.badge) + '</span>'
+        : '';
+
+      // Weight HTML
+      var weightHTML = hasWeight
+        ? '<span class="product-card__weight">' + escapeHTML(product.weight) + '</span>'
+        : '';
+
+      // Placeholder (shown when image fails to load)
+      var placeholderHTML = [
+        '<div class="product-card__placeholder" style="display:none">',
+        '  <div class="product-card__placeholder-inner" style="background:' + product.brandColor + '18;border:2px solid ' + product.brandColor + '40">',
+        '    <span style="color:' + product.brandColor + '">' + escapeHTML(product.brandInitials) + '</span>',
+        '  </div>',
+        '</div>',
+      ].join('');
+
+      return [
+        '<article class="product-card reveal ' + delayClass + '" data-id="' + product.id + '" data-category="' + product.category + '">',
+
+        '  <div class="product-card__image-wrap">',
+        '    ' + badgeHTML,
+        '    <img',
+        '      src="' + product.image + '"',
+        '      alt="' + escapeHTML(product.name) + '"',
+        '      class="product-card__img"',
+        '      loading="lazy"',
+        '      onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"',
+        '    >',
+        '    ' + placeholderHTML,
+        '  </div>',
+
+        '  <div class="product-card__body">',
+        '    <div class="product-card__meta">',
+        '      <span class="product-card__brand">' + escapeHTML(product.brand) + '</span>',
+        '      ' + weightHTML,
+        '    </div>',
+        '    <h3 class="product-card__name">' + escapeHTML(product.name) + '</h3>',
+        '    <p class="product-card__description">' + escapeHTML(product.description) + '</p>',
+        '  </div>',
+
+        '  <div class="product-card__footer">',
+        '    <p class="product-card__price">',
+        '      <span class="product-card__price-currency">R$</span>',
+        '      <span class="product-card__price-value">' + product.price.toFixed(2).replace('.', ',') + '</span>',
+        '    </p>',
+        '    <a href="' + waURL + '" target="_blank" rel="noopener noreferrer" class="btn btn--whatsapp">',
+        '      <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>',
+        '      Comprar pelo WhatsApp',
+        '    </a>',
+        '  </div>',
+
+        '</article>',
+      ].join('');
+    }).join('');
+
+    // Re-observe new cards for scroll reveal
+    observeReveal();
+  }
+
+  /* ══════════════════════════════════════════════════════
+     FOOTER CATEGORIES
+     ══════════════════════════════════════════════════════ */
+  function initFooterCategories() {
+    var el = document.getElementById('footerCategories');
+    if (!el) return;
+
+    el.innerHTML = CATEGORIES
+      .filter(function (c) { return c.id !== 'all'; })
+      .map(function (cat) {
+        return '<li><a href="#produtos" data-filter="' + cat.id + '">' + escapeHTML(cat.label) + '</a></li>';
+      })
+      .join('');
+
+    // Clicking a footer category scrolls to products and activates filter
+    el.querySelectorAll('a[data-filter]').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        var filterCat = e.currentTarget.dataset.filter;
+        setTimeout(function () {
+          var btn = $filterTabs.querySelector('[data-category="' + filterCat + '"]');
+          if (btn) btn.click();
+        }, 400);
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     ACTIVE NAV HIGHLIGHT
+     ══════════════════════════════════════════════════════ */
+  function initActiveNav() {
+    var sections = document.querySelectorAll('section[id], footer[id]');
+    var navLinks = document.querySelectorAll('.nav__link');
+
+    if (!sections.length || !navLinks.length) return;
+
+    var sectionObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var id = entry.target.id;
+          navLinks.forEach(function (link) {
+            link.classList.toggle(
+              'active',
+              link.getAttribute('href') === '#' + id
+            );
+          });
+        }
+      });
+    }, { threshold: 0.25 });
+
+    sections.forEach(function (s) { sectionObserver.observe(s); });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     SMOOTH SCROLL (for older browsers)
+     ══════════════════════════════════════════════════════ */
+  function initSmoothScroll() {
+    document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
+      anchor.addEventListener('click', function (e) {
+        var target = document.querySelector(this.getAttribute('href'));
+        if (!target) return;
+        e.preventDefault();
+        var offset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-h'), 10) || 76;
+        var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+        window.scrollTo({ top: top, behavior: 'smooth' });
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     UTILITY — XSS-safe escaping
+     ══════════════════════════════════════════════════════ */
+  function escapeHTML(str) {
+    if (typeof str !== 'string') return String(str);
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /* ══════════════════════════════════════════════════════
+     INIT
+     ══════════════════════════════════════════════════════ */
+  function init() {
+    initLoader();
+    initHeader();
+    initMobileMenu();
+    initEmbers();
+    initFilters();
+    renderProducts(PRODUCTS);
+    initWhatsAppLinks();
+    initFooterCategories();
+    initReveal();
+    initActiveNav();
+    initSmoothScroll();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();

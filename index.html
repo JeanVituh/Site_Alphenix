@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- ── SEO ────────────────────────────────────────── -->
+  <title>Alphenix | Suplementos Premium — Treine como um Campeão</title>
+  <meta name="description" content="Suplementos premium selecionados para quem treina de verdade. Whey protein, creatina, pré-treinos e combos das melhores marcas. Compre direto pelo WhatsApp.">
+  <meta name="keywords" content="suplementos, whey protein, creatina, pré-treino, alphenix, dark wolf, dux, max titanium, integralmedica, probiotica, suplementos premium, ganho de massa">
+  <meta name="author" content="Alphenix Suplementos">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://alphenix.com.br/">
+
+  <!-- ── Open Graph / Facebook ──────────────────────── -->
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://alphenix.com.br/">
+  <meta property="og:title"       content="Alphenix | Suplementos Premium">
+  <meta property="og:description" content="Suplementos de alta qualidade para quem leva o treino a sério. Marcas top, preços justos, entrega rápida.">
+  <meta property="og:image"       content="assets/images/logo_oficial.png">
+  <meta property="og:site_name"   content="Alphenix">
+  <meta property="og:locale"      content="pt_BR">
+
+  <!-- ── Twitter Card ───────────────────────────────── -->
+  <meta name="twitter:card"        content="summary_large_image">
+  <meta name="twitter:title"       content="Alphenix | Suplementos Premium">
+  <meta name="twitter:description" content="Suplementos de alta qualidade para quem leva o treino a sério.">
+  <meta name="twitter:image"       content="assets/images/logo_oficial.png">
+
+  <!-- ── Favicon ────────────────────────────────────── -->
+  <link rel="icon"             type="image/png" sizes="32x32" href="assets/images/logo_oficial.png">
+  <link rel="icon"             type="image/png" sizes="16x16" href="assets/images/logo_oficial.png">
+  <link rel="apple-touch-icon" sizes="180x180"                href="assets/images/logo_oficial.png">
+  <meta name="theme-color" content="#080808">
+  <meta name="msapplication-TileColor" content="#080808">
+
+  <!-- ── Fonts ──────────────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet">
+
+  <!-- ── Icons ──────────────────────────────────────── -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W==" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+  <!-- ── CSS ────────────────────────────────────────── -->
+  <link rel="stylesheet" href="assets/css/variables.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  LOADER                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="loader" id="loader" role="status" aria-label="Carregando">
+    <div class="loader__content">
+      <img src="assets/images/logo_oficial.png" alt="Alphenix" class="loader__logo">
+      <div class="loader__bar-track">
+        <div class="loader__bar"></div>
+      </div>
+      <p class="loader__label">CARREGANDO</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  HEADER                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+
+      <a href="#inicio" class="header__logo" aria-label="Alphenix — Início">
+        <img src="assets/images/logo_oficial.png" alt="Alphenix" height="44">
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Menu principal">
+        <ul class="nav__list">
+          <li><a href="#inicio"   class="nav__link">Início</a></li>
+          <li><a href="#produtos" class="nav__link">Produtos</a></li>
+          <li><a href="#sobre"    class="nav__link">Diferenciais</a></li>
+          <li><a href="#contato"  class="nav__link">Contato</a></li>
+        </ul>
+      </nav>
+
+      <div class="header__actions">
+        <a href="#produtos" class="btn btn--primary header__cta">
+          <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+          Ver Produtos
+        </a>
+        <button class="hamburger" id="hamburger" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+      <nav aria-label="Menu mobile">
+        <ul class="mobile-menu__list">
+          <li><a href="#inicio"   class="mobile-menu__link">Início</a></li>
+          <li><a href="#produtos" class="mobile-menu__link">Produtos</a></li>
+          <li><a href="#sobre"    class="mobile-menu__link">Diferenciais</a></li>
+          <li><a href="#contato"  class="mobile-menu__link">Contato</a></li>
+        </ul>
+      </nav>
+      <a href="#produtos" class="btn btn--primary mobile-menu__cta">
+        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+        Ver Produtos
+      </a>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!--  HERO                                         -->
+    <!-- ══════════════════════════════════════════════ -->
+    <section class="hero" id="inicio" aria-label="Bem-vindo à Alphenix">
+
+      <!-- Background layers -->
+      <div class="hero__bg" aria-hidden="true">
+        <div class="hero__glow hero__glow--main"></div>
+        <div class="hero__glow hero__glow--secondary"></div>
+        <div class="hero__grid-overlay"></div>
+      </div>
+
+      <!-- Ember particles container -->
+      <div class="embers" id="embers" aria-hidden="true"></div>
+
+      <div class="container hero__inner">
+
+        <!-- Left: Content -->
+        <div class="hero__content">
+          <p class="section-eyebrow reveal">
+            🔥 Desperte o seu potencial
+          </p>
+
+          <h1 class="hero__title reveal reveal-delay-1">
+            TREINE COMO<br>
+            <span class="text-gradient">UM CAMPEÃO</span>
+          </h1>
+
+          <p class="hero__subtitle reveal reveal-delay-2">
+            Suplementos premium selecionados para quem leva o treino a sério.
+            Marcas certificadas, resultados que você sente.
+          </p>
+
+          <div class="hero__actions reveal reveal-delay-3">
+            <a href="#produtos" class="btn btn--primary">
+              <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+              Ver Produtos
+            </a>
+            <a href="#" class="btn btn--outline" id="heroWhatsApp" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+              Falar no WhatsApp
+            </a>
+          </div>
+
+          <div class="hero__stats reveal reveal-delay-4" aria-label="Números da Alphenix">
+            <div class="hero__stat">
+              <span class="hero__stat-value text-gradient">+500</span>
+              <span class="hero__stat-label">Clientes</span>
+            </div>
+            <div class="hero__stat-sep" aria-hidden="true"></div>
+            <div class="hero__stat">
+              <span class="hero__stat-value text-gradient">+13</span>
+              <span class="hero__stat-label">Produtos</span>
+            </div>
+            <div class="hero__stat-sep" aria-hidden="true"></div>
+            <div class="hero__stat">
+              <span class="hero__stat-value text-gradient">100%</span>
+              <span class="hero__stat-label">Original</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Logo Visual -->
+        <div class="hero__visual reveal reveal-delay-2" aria-hidden="true">
+          <div class="hero__phoenix-wrap">
+            <div class="hero__phoenix-ring hero__phoenix-ring--outer"></div>
+            <div class="hero__phoenix-ring hero__phoenix-ring--inner"></div>
+            <div class="hero__phoenix-glow"></div>
+            <img
+              src="assets/images/logo_oficial.png"
+              alt=""
+              class="hero__phoenix-img"
+              draggable="false"
+            >
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Scroll indicator -->
+      <a href="#produtos" class="hero__scroll" aria-label="Ir para produtos">
+        <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+      </a>
+
+    </section>
+
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!--  PRODUTOS                                     -->
+    <!-- ══════════════════════════════════════════════ -->
+    <section class="section products-section" id="produtos">
+      <div class="container">
+
+        <div class="section-header reveal">
+          <p class="section-eyebrow">Catálogo Alphenix</p>
+          <h2 class="section-title">NOSSOS <span>PRODUTOS</span></h2>
+          <p class="section-subtitle">
+            Curadoria das marcas mais confiáveis do mercado.
+            Do whey ao pré-treino — tudo que você precisa em um só lugar.
+          </p>
+        </div>
+
+        <!-- Category Filters -->
+        <div class="filter-tabs reveal" id="filterTabs" role="tablist" aria-label="Filtrar por categoria"></div>
+
+        <!-- Products Grid -->
+        <div class="products-grid" id="productsGrid" aria-live="polite" aria-label="Grade de produtos"></div>
+
+        <!-- Empty state -->
+        <div class="products-empty" id="productsEmpty" style="display:none" role="status">
+          <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+          <p>Nenhum produto nesta categoria.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Divider -->
+    <div class="divider"></div>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!--  DIFERENCIAIS                                 -->
+    <!-- ══════════════════════════════════════════════ -->
+    <section class="section features-section" id="sobre" aria-label="Por que escolher a Alphenix">
+      <div class="container">
+
+        <div class="section-header reveal">
+          <p class="section-eyebrow">Por que Alphenix</p>
+          <h2 class="section-title">A MARCA QUE <span>TRANSFORMA</span></h2>
+          <p class="section-subtitle">
+            Não vendemos apenas suplementos. Entregamos qualidade, confiança e resultados reais.
+          </p>
+        </div>
+
+        <div class="features-grid">
+
+          <article class="feature-card reveal reveal-delay-1">
+            <div class="feature-card__icon-wrap" aria-hidden="true">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3 class="feature-card__title">100% Original</h3>
+            <p class="feature-card__text">
+              Todos os produtos com nota fiscal e procedência garantida.
+              Sem risco de falsificados — só o que há de melhor no mercado.
+            </p>
+          </article>
+
+          <article class="feature-card reveal reveal-delay-2">
+            <div class="feature-card__icon-wrap" aria-hidden="true">
+              <i class="fa-brands fa-whatsapp"></i>
+            </div>
+            <h3 class="feature-card__title">Atendimento Direto</h3>
+            <p class="feature-card__text">
+              Compre direto pelo WhatsApp, sem intermediários. Atendimento
+              personalizado, rápido e sem burocracia.
+            </p>
+          </article>
+
+          <article class="feature-card reveal reveal-delay-3">
+            <div class="feature-card__icon-wrap" aria-hidden="true">
+              <i class="fa-solid fa-truck-fast"></i>
+            </div>
+            <h3 class="feature-card__title">Entrega Garantida</h3>
+            <p class="feature-card__text">
+              Seus suplementos chegam com segurança e rapidez.
+              Para você não perder nenhum dia de treino por falta de suporte.
+            </p>
+          </article>
+
+          <article class="feature-card reveal reveal-delay-4">
+            <div class="feature-card__icon-wrap" aria-hidden="true">
+              <i class="fa-solid fa-award"></i>
+            </div>
+            <h3 class="feature-card__title">Marcas Top</h3>
+            <p class="feature-card__text">
+              Dark Wolf, DUX, Max Titanium, IntegralMédica, Probiótica e mais.
+              Só trabalhamos com marcas que comprovam resultado.
+            </p>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════ -->
+    <!--  CTA BANNER                                   -->
+    <!-- ══════════════════════════════════════════════ -->
+    <section class="cta-banner reveal" aria-label="Chamada para ação">
+      <div class="cta-banner__bg" aria-hidden="true"></div>
+      <div class="container cta-banner__inner">
+        <div class="cta-banner__content">
+          <h2 class="cta-banner__title">
+            PRONTO PARA <span class="text-gradient">EVOLUIR?</span>
+          </h2>
+          <p class="cta-banner__subtitle">
+            Entre em contato agora e garanta seus suplementos com atendimento personalizado.
+          </p>
+        </div>
+        <a href="#" class="btn btn--whatsapp cta-banner__btn" id="ctaBannerBtn" target="_blank" rel="noopener">
+          <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+          CHAMAR NO WHATSAPP
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  FOOTER                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <footer class="footer" id="contato">
+
+    <div class="footer__body">
+      <div class="container footer__inner">
+
+        <!-- Brand -->
+        <div class="footer__brand">
+          <a href="#inicio" class="footer__logo-link" aria-label="Alphenix — Topo">
+            <img src="assets/images/logo_oficial.png" alt="Alphenix" class="footer__logo" height="56">
+          </a>
+          <p class="footer__tagline">
+            Desperte o seu potencial.<br>
+            Treine como um campeão.
+          </p>
+          <div class="footer__social" aria-label="Redes sociais">
+            <a href="#" class="footer__social-link" aria-label="Instagram" target="_blank" rel="noopener">
+              <i class="fa-brands fa-instagram" aria-hidden="true"></i>
+            </a>
+            <a href="#" class="footer__social-link footer__social-link--wa" id="footerWA" aria-label="WhatsApp" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+            </a>
+            <a href="#" class="footer__social-link" aria-label="TikTok" target="_blank" rel="noopener">
+              <i class="fa-brands fa-tiktok" aria-hidden="true"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="footer__nav-col">
+          <h3 class="footer__col-title">Navegação</h3>
+          <ul class="footer__nav-list">
+            <li><a href="#inicio">Início</a></li>
+            <li><a href="#produtos">Produtos</a></li>
+            <li><a href="#sobre">Diferenciais</a></li>
+            <li><a href="#contato">Contato</a></li>
+          </ul>
+        </div>
+
+        <!-- Categories -->
+        <div class="footer__nav-col">
+          <h3 class="footer__col-title">Categorias</h3>
+          <ul class="footer__nav-list" id="footerCategories"></ul>
+        </div>
+
+        <!-- Contact -->
+        <div class="footer__nav-col">
+          <h3 class="footer__col-title">Contato</h3>
+          <a href="#" class="footer__wa-link" id="footerContactWA" target="_blank" rel="noopener">
+            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+            Fale conosco pelo WhatsApp
+          </a>
+          <p class="footer__contact-note">
+            Atendimento via WhatsApp<br>
+            Segunda a Sábado · 8h às 18h
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="footer__bottom">
+      <div class="container footer__bottom-inner">
+        <p class="footer__copy">© 2025 Alphenix Suplementos · Todos os direitos reservados.</p>
+        <p class="footer__made">Feito com <span class="text-gradient" aria-label="fogo">🔥</span> para campeões</p>
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- ── Scripts ──────────────────────────────────── -->
+  <script src="assets/js/products.js"></script>
+  <script src="assets/js/main.js"></script>
+
+</body>
+</html>

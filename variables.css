@@ -1,0 +1,100 @@
+/**
+ * ALPHENIX — Design Tokens
+ * Todas as variáveis de design em um único lugar.
+ * Altere aqui para refletir em todo o site.
+ */
+
+:root {
+  /* ── Cores Primárias ────────────────────────────────── */
+  --clr-bg:          #080808;   /* Preto fundo              */
+  --clr-bg-card:     #111111;   /* Preto cartão             */
+  --clr-bg-elevated: #181818;   /* Preto elevado            */
+  --clr-border:      #232323;   /* Borda sutil              */
+  --clr-border-glow: #FF6B00;   /* Borda laranja            */
+
+  /* ── Cores de Acento ────────────────────────────────── */
+  --clr-orange:      #FF6B00;   /* Laranja principal        */
+  --clr-orange-lt:   #FF8C38;   /* Laranja claro            */
+  --clr-gold:        #FFB300;   /* Dourado                  */
+  --clr-gold-lt:     #FFC933;   /* Dourado claro            */
+  --clr-ember:       #FF4500;   /* Brasa profunda           */
+
+  /* ── Gradientes ─────────────────────────────────────── */
+  --grad-fire:   linear-gradient(135deg, var(--clr-ember) 0%, var(--clr-orange) 50%, var(--clr-gold) 100%);
+  --grad-card:   linear-gradient(180deg, #1a1a1a 0%, #111111 100%);
+  --grad-hero:   radial-gradient(ellipse 70% 80% at 80% 40%, rgba(255,107,0,0.18) 0%, transparent 70%);
+  --grad-text:   linear-gradient(90deg, var(--clr-orange) 0%, var(--clr-gold) 100%);
+
+  /* ── Texto ──────────────────────────────────────────── */
+  --clr-text:    #FFFFFF;
+  --clr-text-md: #BBBBBB;
+  --clr-text-sm: #777777;
+  --clr-text-xs: #444444;
+
+  /* ── Marca WhatsApp ─────────────────────────────────── */
+  --clr-whatsapp:    #25D366;
+  --clr-whatsapp-dk: #1DA851;
+
+  /* ── Tipografia ─────────────────────────────────────── */
+  --font-display: 'Bebas Neue', 'Impact', sans-serif;
+  --font-body:    'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  /* Escala tipográfica */
+  --text-xs:   0.72rem;   /* 11.5px */
+  --text-sm:   0.85rem;   /* 13.5px */
+  --text-base: 1rem;      /* 16px   */
+  --text-lg:   1.125rem;  /* 18px   */
+  --text-xl:   1.25rem;   /* 20px   */
+  --text-2xl:  1.5rem;    /* 24px   */
+  --text-3xl:  2rem;      /* 32px   */
+  --text-4xl:  3rem;      /* 48px   */
+  --text-5xl:  4rem;      /* 64px   */
+  --text-6xl:  6rem;      /* 96px   */
+
+  /* ── Espaçamento ────────────────────────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --sp-20: 80px;
+  --sp-24: 96px;
+  --sp-32: 128px;
+
+  /* ── Layout ─────────────────────────────────────────── */
+  --container: 1200px;
+  --container-sm: 800px;
+  --header-h: 76px;
+
+  /* ── Bordas ─────────────────────────────────────────── */
+  --radius-sm:  6px;
+  --radius:     12px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+  --radius-full: 9999px;
+
+  /* ── Sombras ────────────────────────────────────────── */
+  --shadow-card:  0 4px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow:  0 0 40px rgba(255, 107, 0, 0.25);
+  --shadow-glow-sm: 0 0 16px rgba(255, 107, 0, 0.2);
+
+  /* ── Transições ─────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
+  --t-fast:   140ms;
+  --t-base:   260ms;
+  --t-slow:   480ms;
+  --t-xl:     700ms;
+
+  /* ── Z-index ────────────────────────────────────────── */
+  --z-base:    1;
+  --z-card:    10;
+  --z-header:  100;
+  --z-modal:   200;
+  --z-loader:  999;
+}
