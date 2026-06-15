@@ -277,6 +277,11 @@
         '         data-category="' + escapeHTML(product.category) + '">',
 
         '  <div class="product-card__image-wrap">',
+        '    <a href="produto.html?id=' + product.id + '"',
+        '       class="product-card__image-link"',
+        '       aria-label="Ver detalhes: ' + escapeHTML(product.name) + '"',
+        '       tabindex="-1">',
+        '    </a>',
         '    ' + badgeHTML,
         '    <img src="' + escapeHTML(product.image) + '"',
         '         alt="' + escapeHTML(product.name) + '"',
