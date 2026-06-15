@@ -1,7 +1,7 @@
 /**
  * ╔══════════════════════════════════════════════════════════════╗
- * ║              ALPHENIX — Main Script                         ║
- * ║  Loader · Header · Embers · Filtros · Produtos · Modal PDP ║
+ * ║              ALPHENIX — Main Script (index.html)            ║
+ * ║  Loader · Header · Embers · Filtros · Grid de Produtos     ║
  * ╚══════════════════════════════════════════════════════════════╝
  */
 
@@ -215,7 +215,7 @@
         b.classList.toggle('active', isThis);
         b.setAttribute('aria-selected', String(isThis));
       });
-      // Animate grid transition
+      /* Animate grid transition */
       $productsGrid.style.cssText = 'opacity:0;transform:translateY(10px);transition:opacity 160ms,transform 160ms';
       setTimeout(function () {
         renderProducts(getFilteredProducts());
@@ -224,8 +224,19 @@
     });
   }
 
+  /* ── URL param ?categoria=X auto-activates filter ── */
+  function checkCategoriaParam() {
+    var params = new URLSearchParams(window.location.search);
+    var cat = params.get('categoria');
+    if (!cat) return;
+    var btn = $filterTabs.querySelector('[data-category="' + cat + '"]');
+    if (btn) {
+      setTimeout(function () { btn.click(); }, 200);
+    }
+  }
+
   /* ══════════════════════════════════════════════════════
-     PRODUCTS
+     PRODUCTS — render
      ══════════════════════════════════════════════════════ */
   function getFilteredProducts() {
     if (activeCategory === 'all') return PRODUCTS;
@@ -263,10 +274,7 @@
       return [
         '<article class="product-card reveal ' + delay + '"',
         '         data-id="' + product.id + '"',
-        '         data-category="' + escapeHTML(product.category) + '"',
-        '         role="button"',
-        '         tabindex="0"',
-        '         aria-label="Ver detalhes: ' + escapeHTML(product.name) + '">',
+        '         data-category="' + escapeHTML(product.category) + '">',
 
         '  <div class="product-card__image-wrap">',
         '    ' + badgeHTML,
@@ -294,14 +302,21 @@
         '        ' + product.price.toFixed(2).replace('.', ','),
         '      </span>',
         '    </p>',
-        '    <a href="' + getProductWaURL(product) + '"',
-        '       target="_blank" rel="noopener noreferrer"',
-        '       class="btn btn--whatsapp"',
-        '       onclick="event.stopPropagation()"',
-        '       aria-label="Comprar ' + escapeHTML(product.name) + ' pelo WhatsApp">',
-        '      <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>',
-        '      Comprar pelo WhatsApp',
-        '    </a>',
+        '    <div class="product-card__actions">',
+        '      <a href="produto.html?id=' + product.id + '"',
+        '         class="btn btn--details"',
+        '         aria-label="Ver detalhes: ' + escapeHTML(product.name) + '">',
+        '        <i class="fa-solid fa-eye" aria-hidden="true"></i>',
+        '        Mais Detalhes',
+        '      </a>',
+        '      <a href="' + getProductWaURL(product) + '"',
+        '         target="_blank" rel="noopener noreferrer"',
+        '         class="btn btn--whatsapp"',
+        '         aria-label="Comprar ' + escapeHTML(product.name) + ' pelo WhatsApp">',
+        '        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>',
+        '        Comprar pelo WhatsApp',
+        '      </a>',
+        '    </div>',
         '  </div>',
 
         '</article>',
@@ -310,290 +325,6 @@
 
     observeReveal();
   }
-
-  /* ══════════════════════════════════════════════════════
-     CARD CLICK → open modal
-     ══════════════════════════════════════════════════════ */
-  function initCardClick() {
-    // Delegation on the grid (persists through re-renders)
-    $productsGrid.addEventListener('click', function (e) {
-      // Let WhatsApp button / links through
-      if (e.target.closest('a, .btn--whatsapp')) return;
-      var card = e.target.closest('.product-card');
-      if (!card) return;
-      ProductModal.open(parseInt(card.dataset.id, 10));
-    });
-
-    // Keyboard accessibility: Enter / Space on the card
-    $productsGrid.addEventListener('keydown', function (e) {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      if (e.target.closest('a, .btn--whatsapp')) return;
-      var card = e.target.closest('.product-card');
-      if (!card) return;
-      e.preventDefault();
-      ProductModal.open(parseInt(card.dataset.id, 10));
-    });
-  }
-
-  /* ══════════════════════════════════════════════════════
-     PRODUCT DETAIL MODAL
-     ══════════════════════════════════════════════════════ */
-  var ProductModal = {
-
-    /* Elements */
-    $overlay:     null,
-    $mainImg:     null,
-    $placeholder: null,
-    $placeholderText: null,
-    $thumbs:      null,
-    $prev:        null,
-    $next:        null,
-    $brand:       null,
-    $weight:      null,
-    $badge:       null,
-    $name:        null,
-    $description: null,
-    $price:       null,
-    $wa:          null,
-
-    /* Gallery state */
-    product:      null,
-    images:       [],
-    currentIdx:   0,
-
-    /* ── Setup ───────────────────────────────────── */
-    init: function () {
-      var self = this;
-
-      this.$overlay         = document.getElementById('pdpOverlay');
-      this.$mainImg         = document.getElementById('pdpMainImg');
-      this.$placeholder     = document.getElementById('pdpPlaceholder');
-      this.$placeholderText = document.getElementById('pdpPlaceholderText');
-      this.$thumbs          = document.getElementById('pdpThumbs');
-      this.$prev            = document.getElementById('pdpPrev');
-      this.$next            = document.getElementById('pdpNext');
-      this.$brand           = document.getElementById('pdpBrand');
-      this.$weight          = document.getElementById('pdpWeight');
-      this.$badge           = document.getElementById('pdpBadge');
-      this.$name            = document.getElementById('pdpName');
-      this.$description     = document.getElementById('pdpDescription');
-      this.$price           = document.getElementById('pdpPrice');
-      this.$wa              = document.getElementById('pdpWA');
-
-      if (!this.$overlay) return;
-
-      /* Close on backdrop click */
-      this.$overlay.addEventListener('click', function (e) {
-        if (e.target === self.$overlay) self.close();
-      });
-
-      /* Close button */
-      document.getElementById('pdpClose').addEventListener('click', function () {
-        self.close();
-      });
-
-      /* Keyboard navigation */
-      document.addEventListener('keydown', function (e) {
-        if (!self.isOpen()) return;
-        if (e.key === 'Escape')      self.close();
-        if (e.key === 'ArrowLeft')   self.prevImage();
-        if (e.key === 'ArrowRight')  self.nextImage();
-      });
-
-      /* Gallery arrows */
-      this.$prev.addEventListener('click', function () { self.prevImage(); });
-      this.$next.addEventListener('click', function () { self.nextImage(); });
-
-      /* Touch swipe on gallery stage */
-      var stage = document.getElementById('pdpStage');
-      var touchX = 0;
-      stage.addEventListener('touchstart', function (e) {
-        touchX = e.changedTouches[0].screenX;
-      }, { passive: true });
-      stage.addEventListener('touchend', function (e) {
-        var diff = touchX - e.changedTouches[0].screenX;
-        if (Math.abs(diff) > 40) {
-          if (diff > 0) self.nextImage(); else self.prevImage();
-        }
-      }, { passive: true });
-
-      /* URL hash routing */
-      this.checkHash();
-      window.addEventListener('hashchange', function () { self.checkHash(); });
-    },
-
-    /* ── Open ────────────────────────────────────── */
-    open: function (productId) {
-      var product = null;
-      for (var i = 0; i < PRODUCTS.length; i++) {
-        if (PRODUCTS[i].id === productId) { product = PRODUCTS[i]; break; }
-      }
-      if (!product) return;
-
-      this.product = product;
-
-      /* Populate text fields */
-      this.$brand.textContent = product.brand;
-      this.$name.textContent  = product.name;
-      this.$description.textContent = product.description; /* Full — no truncation */
-
-      /* Weight */
-      if (product.weight) {
-        this.$weight.textContent = product.weight;
-        this.$weight.style.display = '';
-      } else {
-        this.$weight.style.display = 'none';
-      }
-
-      /* Badge */
-      if (product.badge) {
-        this.$badge.textContent = product.badge;
-        this.$badge.classList.add('visible');
-      } else {
-        this.$badge.textContent = '';
-        this.$badge.classList.remove('visible');
-      }
-
-      /* Price */
-      this.$price.textContent = product.price.toFixed(2).replace('.', ',');
-
-      /* WhatsApp */
-      this.$wa.href = getProductWaURL(product);
-
-      /* Images:
-         - product.images (array) if provided in products.js
-         - otherwise fall back to product.image (single)
-      */
-      var imgs = (product.images && product.images.length > 0)
-        ? product.images
-        : (product.image ? [product.image] : []);
-      this.images     = imgs;
-      this.currentIdx = 0;
-
-      /* Gallery */
-      this._buildThumbs();
-      this._loadImage(0);
-
-      /* Show overlay */
-      this.$overlay.classList.add('active');
-      this.$overlay.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('pdp-open');
-
-      /* Update URL hash */
-      var newHash = '#produto/' + productId;
-      if (window.location.hash !== newHash) {
-        history.pushState(null, '', newHash);
-      }
-    },
-
-    /* ── Close ───────────────────────────────────── */
-    close: function (skipHash) {
-      this.$overlay.classList.remove('active');
-      this.$overlay.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('pdp-open');
-      if (!skipHash) {
-        history.pushState(null, '', window.location.pathname + window.location.search);
-      }
-    },
-
-    isOpen: function () {
-      return this.$overlay && this.$overlay.classList.contains('active');
-    },
-
-    /* ── URL hash routing ────────────────────────── */
-    checkHash: function () {
-      var match = window.location.hash.match(/^#produto\/(\d+)$/);
-      if (match) {
-        this.open(parseInt(match[1], 10));
-      } else if (this.isOpen()) {
-        this.close(true);
-      }
-    },
-
-    /* ── Gallery ─────────────────────────────────── */
-    _buildThumbs: function () {
-      var self = this;
-      var imgs = this.images;
-      var multi = imgs.length > 1;
-
-      /* Show/hide arrows */
-      this.$prev.classList.toggle('pdp-arrow--hidden', !multi);
-      this.$next.classList.toggle('pdp-arrow--hidden', !multi);
-
-      /* Thumbnails */
-      if (multi) {
-        this.$thumbs.innerHTML = imgs.map(function (src, i) {
-          return [
-            '<button class="pdp-thumb' + (i === 0 ? ' active' : '') + '"',
-            '        data-idx="' + i + '"',
-            '        aria-label="Imagem ' + (i + 1) + '">',
-            '  <img src="' + escapeHTML(src) + '" alt="" loading="lazy"',
-            '       onerror="this.style.opacity=\'0.25\'">',
-            '</button>',
-          ].join('');
-        }).join('');
-
-        this.$thumbs.querySelectorAll('.pdp-thumb').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            self._loadImage(parseInt(this.dataset.idx, 10));
-          });
-        });
-      } else {
-        this.$thumbs.innerHTML = '';
-      }
-    },
-
-    _loadImage: function (idx) {
-      var self    = this;
-      var product = this.product;
-      var src     = this.images[idx];
-
-      this.currentIdx = idx;
-
-      /* Update active thumb */
-      this.$thumbs.querySelectorAll('.pdp-thumb').forEach(function (btn, i) {
-        btn.classList.toggle('active', i === idx);
-      });
-
-      /* Scroll active thumb into view */
-      var activeThumb = this.$thumbs.querySelector('.pdp-thumb.active');
-      if (activeThumb) activeThumb.scrollIntoView({ block: 'nearest', inline: 'center' });
-
-      /* Load main image with fade */
-      var img = this.$mainImg;
-      img.style.opacity = '0';
-
-      img.onerror = function () {
-        img.style.display = 'none';
-        self.$placeholder.style.display = 'flex';
-        self.$placeholder.style.background = product.brandColor + '1a';
-        self.$placeholderText.textContent  = product.brandInitials;
-        self.$placeholderText.style.color  = product.brandColor;
-      };
-
-      img.onload = function () {
-        self.$placeholder.style.display = 'none';
-        img.style.display = '';
-        img.style.transition = 'opacity 0.22s';
-        img.style.opacity = '1';
-      };
-
-      img.src = src;
-      img.alt = product.name;
-    },
-
-    prevImage: function () {
-      if (this.images.length <= 1) return;
-      var idx = (this.currentIdx - 1 + this.images.length) % this.images.length;
-      this._loadImage(idx);
-    },
-
-    nextImage: function () {
-      if (this.images.length <= 1) return;
-      var idx = (this.currentIdx + 1) % this.images.length;
-      this._loadImage(idx);
-    },
-  };
 
   /* ══════════════════════════════════════════════════════
      FOOTER CATEGORIES
@@ -626,20 +357,6 @@
     var navLinks = document.querySelectorAll('.nav__link');
     if (!sections.length || !navLinks.length) return;
 
-    new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          var id = entry.target.id;
-          navLinks.forEach(function (link) {
-            link.classList.toggle('active', link.getAttribute('href') === '#' + id);
-          });
-        }
-      });
-    }, { threshold: 0.25 }).observe.call(
-      { observe: function () {} }, // dummy init; real loop below
-      sections[0]
-    );
-
     var navObs = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {
@@ -660,8 +377,7 @@
     document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
       anchor.addEventListener('click', function (e) {
         var href = this.getAttribute('href');
-        // Skip modal hash links
-        if (href.indexOf('#produto/') === 0) return;
+        if (href === '#') return;
         var target = document.querySelector(href);
         if (!target) return;
         e.preventDefault();
@@ -683,13 +399,12 @@
     initEmbers();
     initFilters();
     renderProducts(PRODUCTS);
-    initCardClick();
     initWhatsAppLinks();
     initFooterCategories();
     initReveal();
     initActiveNav();
     initSmoothScroll();
-    ProductModal.init();
+    checkCategoriaParam();
   }
 
   if (document.readyState === 'loading') {

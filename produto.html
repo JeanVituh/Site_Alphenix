@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- ── SEO (populated by produto.js) ─────────────── -->
+  <title>Produto | Alphenix</title>
+  <meta name="description" content="Suplemento premium Alphenix — qualidade garantida, resultados reais.">
+
+  <!-- ── Fonts ──────────────────────────────────────── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet">
+
+  <!-- ── Icons ──────────────────────────────────────── -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <!-- ── CSS ────────────────────────────────────────── -->
+  <link rel="stylesheet" href="assets/css/variables.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/produto.css">
+
+  <!-- ── Favicon ────────────────────────────────────── -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/images/logo_oficial.png">
+  <meta name="theme-color" content="#080808">
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  LOADER                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div class="loader" id="loader" role="status" aria-label="Carregando">
+    <div class="loader__content">
+      <img src="assets/images/logo_oficial.png" alt="Alphenix" class="loader__logo">
+      <div class="loader__bar-track">
+        <div class="loader__bar"></div>
+      </div>
+      <p class="loader__label">CARREGANDO</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  HEADER                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+
+      <a href="index.html" class="header__logo" aria-label="Alphenix — Início">
+        <img src="assets/images/logo_oficial.png" alt="Alphenix" height="44">
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Menu principal">
+        <ul class="nav__list">
+          <li><a href="index.html"          class="nav__link">Início</a></li>
+          <li><a href="index.html#produtos" class="nav__link active">Produtos</a></li>
+          <li><a href="index.html#sobre"    class="nav__link">Diferenciais</a></li>
+          <li><a href="index.html#contato"  class="nav__link">Contato</a></li>
+        </ul>
+      </nav>
+
+      <div class="header__actions">
+        <a href="index.html#produtos" class="btn btn--primary header__cta">
+          <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+          Ver Catálogo
+        </a>
+        <button class="hamburger" id="hamburger" aria-label="Abrir menu" aria-expanded="false" aria-controls="mobileMenu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+      <nav aria-label="Menu mobile">
+        <ul class="mobile-menu__list">
+          <li><a href="index.html"          class="mobile-menu__link">Início</a></li>
+          <li><a href="index.html#produtos" class="mobile-menu__link">Produtos</a></li>
+          <li><a href="index.html#sobre"    class="mobile-menu__link">Diferenciais</a></li>
+          <li><a href="index.html#contato"  class="mobile-menu__link">Contato</a></li>
+        </ul>
+      </nav>
+      <a href="index.html#produtos" class="btn btn--primary mobile-menu__cta">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+        Ver Catálogo
+      </a>
+    </div>
+  </header>
+
+  <main id="pdpMain">
+
+    <!-- ── Not Found ─────────────────────────────── -->
+    <div class="pdp-not-found" id="pdpNotFound" style="display:none">
+      <div class="container">
+        <div class="pdp-not-found__inner">
+          <span class="pdp-not-found__icon" aria-hidden="true">🔥</span>
+          <h1>Produto não encontrado</h1>
+          <p>O produto que você procura não existe ou foi removido do catálogo.</p>
+          <a href="index.html" class="btn btn--primary">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            Ver todos os produtos
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Product Content (hidden until JS loads) ── -->
+    <div id="pdpContent" style="display:none">
+
+      <!-- Breadcrumb -->
+      <nav class="pdp-breadcrumb" id="pdpBreadcrumb" aria-label="Caminho de navegação">
+        <div class="container pdp-breadcrumb__inner">
+          <a href="index.html">Início</a>
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          <a href="index.html#produtos">Produtos</a>
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          <span id="breadcrumbCategory"></span>
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          <span class="pdp-breadcrumb__current" id="breadcrumbName"></span>
+        </div>
+      </nav>
+
+      <!-- ══════════════════════════════════════════ -->
+      <!--  HERO: Gallery + Info                     -->
+      <!-- ══════════════════════════════════════════ -->
+      <section class="pdp-hero">
+        <div class="container pdp-hero__inner">
+
+          <!-- Gallery -->
+          <div class="pdp-gallery">
+            <div class="pdp-gallery__stage" id="pdpStage">
+              <button class="pdp-arrow pdp-arrow--prev pdp-arrow--hidden" id="galleryPrev" aria-label="Imagem anterior">
+                <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+              </button>
+              <img src="" alt="" class="pdp-main-img" id="pdpMainImg" draggable="false">
+              <div class="pdp-gallery__placeholder" id="pdpPlaceholder" style="display:none">
+                <span id="pdpPlaceholderText"></span>
+              </div>
+              <button class="pdp-arrow pdp-arrow--next pdp-arrow--hidden" id="galleryNext" aria-label="Próxima imagem">
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="pdp-thumbs" id="pdpThumbs" role="list" aria-label="Miniaturas"></div>
+          </div>
+
+          <!-- Product Info -->
+          <div class="pdp-info">
+
+            <a href="index.html#produtos" class="pdp-back-link">
+              <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+              Voltar ao catálogo
+            </a>
+
+            <div class="pdp-info__header">
+              <div class="pdp-info__top-row">
+                <span class="pdp-brand" id="pdpBrand"></span>
+                <span class="pdp-weight-tag" id="pdpWeight" style="display:none"></span>
+              </div>
+              <div class="pdp-badge" id="pdpBadge" style="display:none"></div>
+              <h1 class="pdp-name" id="pdpName"></h1>
+              <span class="pdp-category-tag" id="pdpCategoryTag"></span>
+            </div>
+
+            <div class="pdp-price-block">
+              <div class="pdp-price">
+                <span class="pdp-price__curr">R$</span>
+                <span class="pdp-price__val" id="pdpPrice"></span>
+              </div>
+              <p class="pdp-price__note">Consulte condições de pagamento e entrega pelo WhatsApp</p>
+            </div>
+
+            <p class="pdp-description" id="pdpDescription"></p>
+
+            <div class="pdp-cta-group">
+              <a href="#" class="btn btn--whatsapp pdp-cta-main" id="pdpWA"
+                 target="_blank" rel="noopener noreferrer">
+                <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+                Comprar pelo WhatsApp
+              </a>
+              <button class="pdp-share-btn" id="pdpShareBtn" aria-label="Compartilhar produto">
+                <i class="fa-solid fa-share-nodes" aria-hidden="true"></i>
+                <span>Compartilhar</span>
+              </button>
+            </div>
+
+          </div><!-- /pdp-info -->
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════ -->
+      <!--  DETAIL NAVIGATION (sticky tabs)          -->
+      <!-- ══════════════════════════════════════════ -->
+      <nav class="pdp-details-nav" id="pdpDetailsNav" aria-label="Seções do produto">
+        <div class="container">
+          <div class="pdp-details-nav__inner">
+            <a href="#beneficios"  class="pdp-details-nav__link">Benefícios</a>
+            <a href="#ingredientes" class="pdp-details-nav__link">Ingredientes</a>
+            <a href="#modo-de-uso"  class="pdp-details-nav__link">Modo de Uso</a>
+            <a href="#nutricao"     class="pdp-details-nav__link" id="navNutrition">Tabela Nutricional</a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ══════════════════════════════════════════ -->
+      <!--  DETAIL SECTIONS                          -->
+      <!-- ══════════════════════════════════════════ -->
+      <div class="pdp-details">
+        <div class="container">
+
+          <!-- Benefits -->
+          <section class="pdp-section reveal" id="beneficios">
+            <h2 class="pdp-section__title">
+              <i class="fa-solid fa-fire" aria-hidden="true"></i>
+              Benefícios
+            </h2>
+            <ul class="pdp-benefits-grid" id="pdpBenefits" aria-label="Lista de benefícios"></ul>
+          </section>
+
+          <!-- Ingredients -->
+          <section class="pdp-section reveal" id="ingredientes">
+            <h2 class="pdp-section__title">
+              <i class="fa-solid fa-flask-vial" aria-hidden="true"></i>
+              Ingredientes
+            </h2>
+            <div class="pdp-ingredients-box" id="pdpIngredients"></div>
+          </section>
+
+          <!-- How To Use -->
+          <section class="pdp-section reveal" id="modo-de-uso">
+            <h2 class="pdp-section__title">
+              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+              Modo de Uso
+            </h2>
+            <ol class="pdp-steps" id="pdpHowToUse" aria-label="Passos de uso"></ol>
+          </section>
+
+          <!-- Nutrition -->
+          <section class="pdp-section reveal" id="nutricao" style="display:none">
+            <h2 class="pdp-section__title">
+              <i class="fa-solid fa-table-list" aria-hidden="true"></i>
+              Tabela Nutricional
+            </h2>
+            <div class="pdp-nutrition-wrap" id="pdpNutrition"></div>
+          </section>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════ -->
+      <!--  RELATED PRODUCTS                         -->
+      <!-- ══════════════════════════════════════════ -->
+      <section class="pdp-related reveal" id="pdpRelated" style="display:none">
+        <div class="container">
+          <div class="section-header">
+            <p class="section-eyebrow">Da mesma linha</p>
+            <h2 class="section-title">Você também pode <span>gostar</span></h2>
+          </div>
+          <div class="pdp-related__grid" id="pdpRelatedGrid"></div>
+        </div>
+      </section>
+
+    </div><!-- /pdpContent -->
+
+    <!-- ══════════════════════════════════════════ -->
+    <!--  CTA BANNER                               -->
+    <!-- ══════════════════════════════════════════ -->
+    <section class="cta-banner reveal" aria-label="Chamada para ação">
+      <div class="cta-banner__bg" aria-hidden="true"></div>
+      <div class="container cta-banner__inner">
+        <div class="cta-banner__content">
+          <h2 class="cta-banner__title">
+            PRONTO PARA <span class="text-gradient">EVOLUIR?</span>
+          </h2>
+          <p class="cta-banner__subtitle">
+            Entre em contato agora e garanta seus suplementos com atendimento personalizado.
+          </p>
+        </div>
+        <a href="#" class="btn btn--whatsapp cta-banner__btn" id="ctaBannerBtn" target="_blank" rel="noopener">
+          <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+          CHAMAR NO WHATSAPP
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!--  FOOTER                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+  <footer class="footer" id="contato">
+
+    <div class="footer__body">
+      <div class="container footer__inner">
+
+        <!-- Brand -->
+        <div class="footer__brand">
+          <a href="index.html" class="footer__logo-link" aria-label="Alphenix — Início">
+            <img src="assets/images/logo_oficial.png" alt="Alphenix" class="footer__logo" height="56">
+          </a>
+          <p class="footer__tagline">
+            Desperte o seu potencial.<br>
+            Treine como um campeão.
+          </p>
+          <div class="footer__social" aria-label="Redes sociais">
+            <a href="#" class="footer__social-link" aria-label="Instagram" target="_blank" rel="noopener">
+              <i class="fa-brands fa-instagram" aria-hidden="true"></i>
+            </a>
+            <a href="#" class="footer__social-link footer__social-link--wa" id="footerWA" aria-label="WhatsApp" target="_blank" rel="noopener">
+              <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+            </a>
+            <a href="#" class="footer__social-link" aria-label="TikTok" target="_blank" rel="noopener">
+              <i class="fa-brands fa-tiktok" aria-hidden="true"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="footer__nav-col">
+          <h3 class="footer__col-title">Navegação</h3>
+          <ul class="footer__nav-list">
+            <li><a href="index.html">Início</a></li>
+            <li><a href="index.html#produtos">Produtos</a></li>
+            <li><a href="index.html#sobre">Diferenciais</a></li>
+            <li><a href="index.html#contato">Contato</a></li>
+          </ul>
+        </div>
+
+        <!-- Categories -->
+        <div class="footer__nav-col">
+          <h3 class="footer__col-title">Categorias</h3>
+          <ul class="footer__nav-list" id="footerCategories"></ul>
+        </div>
+
+        <!-- Contact -->
+        <div class="footer__nav-col">
+          <h3 class="footer__col-title">Contato</h3>
+          <a href="#" class="footer__wa-link" id="footerContactWA" target="_blank" rel="noopener">
+            <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>
+            Fale conosco pelo WhatsApp
+          </a>
+          <p class="footer__contact-note">
+            Atendimento via WhatsApp<br>
+            Segunda a Sábado · 8h às 18h
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="footer__bottom">
+      <div class="container footer__bottom-inner">
+        <p class="footer__copy">© 2025 Alphenix Suplementos · Todos os direitos reservados.</p>
+        <p class="footer__made">Feito com <span class="text-gradient" aria-label="fogo">🔥</span> para campeões</p>
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- ── Scripts ──────────────────────────────────── -->
+  <script src="assets/js/products.js"></script>
+  <script src="assets/js/produto.js"></script>
+
+</body>
+</html>
