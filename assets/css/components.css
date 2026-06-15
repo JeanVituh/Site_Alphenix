@@ -1239,6 +1239,10 @@ body.loaded .header {
   }
 
   /* Filter tabs: scroll horizontal em vez de quebrar linha */
+  .filter-tabs-wrapper {
+    position: relative;
+  }
+
   .filter-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -1252,6 +1256,52 @@ body.loaded .header {
   }
   .filter-tabs::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Seta "arraste para ver mais" */
+  .filter-tabs-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: var(--sp-2);
+    width: 72px;
+    background: linear-gradient(to right, transparent, var(--clr-bg) 80%);
+    pointer-events: none;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    transition: opacity var(--t-base) var(--ease-out);
+  }
+
+  .filter-scroll-hint {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-60%);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--clr-orange);
+    font-size: 0.7rem;
+    opacity: 0.85;
+    animation: hintBounce 1.4s ease-in-out infinite;
+    transition: opacity var(--t-base) var(--ease-out);
+    z-index: 2;
+  }
+
+  .filter-scroll-hint i {
+    font-size: 0.75rem;
+  }
+
+  /* Esconde hint e fade quando usuário já scrollou */
+  .filter-tabs-wrapper.scrolled::after,
+  .filter-tabs-wrapper.scrolled .filter-scroll-hint {
+    opacity: 0;
+  }
+
+  @keyframes hintBounce {
+    0%, 100% { transform: translateY(-60%) translateX(0);   }
+    50%       { transform: translateY(-60%) translateX(4px); }
   }
 
   .filter-tab {

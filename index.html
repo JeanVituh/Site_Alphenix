@@ -220,7 +220,12 @@
         </div>
 
         <!-- Category Filters -->
-        <div class="filter-tabs reveal" id="filterTabs" role="tablist" aria-label="Filtrar por categoria"></div>
+        <div class="filter-tabs-wrapper reveal">
+          <div class="filter-tabs" id="filterTabs" role="tablist" aria-label="Filtrar por categoria"></div>
+          <div class="filter-scroll-hint" id="filterScrollHint" aria-hidden="true">
+            <i class="fa-solid fa-chevron-right"></i>
+          </div>
+        </div>
 
         <!-- Products Grid -->
         <div class="products-grid" id="productsGrid" aria-live="polite" aria-label="Grade de produtos"></div>
@@ -401,6 +406,21 @@
   <!-- ── Scripts ──────────────────────────────────── -->
   <script src="assets/js/products.js"></script>
   <script src="assets/js/main.js"></script>
+  <script>
+    // Esconde o hint de scroll quando o usuário arrastar os filtros
+    (function () {
+      var tabs = document.getElementById('filterTabs');
+      var wrapper = tabs && tabs.closest('.filter-tabs-wrapper');
+      if (!tabs || !wrapper) return;
+      function onScroll() {
+        if (tabs.scrollLeft > 20) {
+          wrapper.classList.add('scrolled');
+          tabs.removeEventListener('scroll', onScroll);
+        }
+      }
+      tabs.addEventListener('scroll', onScroll, { passive: true });
+    })();
+  </script>
 
 </body>
 </html>
