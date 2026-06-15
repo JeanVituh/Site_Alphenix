@@ -1238,16 +1238,26 @@ body.loaded .header {
     grid-template-columns: 1fr;
   }
 
+  /* Filter tabs: scroll horizontal em vez de quebrar linha */
   .filter-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: visible;
+    justify-content: flex-start;
+    padding-bottom: var(--sp-2);
     gap: var(--sp-2);
+    /* esconde scrollbar mas mantém scroll funcional */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-
-  .filter-tab span {
+  .filter-tabs::-webkit-scrollbar {
     display: none;
   }
 
   .filter-tab {
-    padding: 10px 14px;
+    flex-shrink: 0;
+    padding: 10px 16px;
+    font-size: var(--text-xs);
   }
 
   .footer__inner {
@@ -1275,6 +1285,38 @@ body.loaded .header {
     width: 200px;
     height: 200px;
   }
+
+  /* Hero stats: grid de 3 colunas iguais em vez de flex row */
+  .hero__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-3);
+    max-width: 100%;
+    border-top: 1px solid var(--clr-border);
+    padding-top: var(--sp-4);
+  }
+
+  /* Esconde os separadores verticais no mobile */
+  .hero__stat-sep {
+    display: none;
+  }
+
+  /* Centraliza cada stat e reduz fonte */
+  .hero__stat {
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero__stat-value {
+    font-size: var(--text-lg);   /* 1.125rem ≈ 18px — cabe em 3 colunas */
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+
+  .hero__stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
 }
 
 /* ── Smallest mobile (≤ 380px) ────────────────────── */
@@ -1285,5 +1327,14 @@ body.loaded .header {
 
   .hero__title {
     font-size: clamp(3rem, 11vw, 4rem);
+  }
+
+  /* Em telas muito pequenas, reduz ainda mais */
+  .hero__stat-value {
+    font-size: var(--text-base);   /* 1rem ≈ 16px */
+  }
+
+  .hero__stat-label {
+    font-size: 0.55rem;
   }
 }
