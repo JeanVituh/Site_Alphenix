@@ -104,6 +104,7 @@
 .pdp-gallery {
   position: sticky;
   top: calc(var(--header-h) + var(--sp-4));
+  min-width: 0; /* evita overflow horizontal no CSS Grid */
 }
 
 .pdp-gallery__stage {
@@ -117,6 +118,7 @@
   align-items: center;
   justify-content: center;
   transition: border-color var(--t-base);
+  contain: strict;
 }
 
 .pdp-gallery__stage:hover {
@@ -127,8 +129,12 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center;
+  max-width: 100%;
+  max-height: 100%;
   padding: var(--sp-8);
   display: block;
+  position: relative;
   transition: opacity var(--t-base) var(--ease-out);
 }
 
@@ -258,6 +264,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-6);
+  min-width: 0; /* evita overflow horizontal no CSS Grid */
 }
 
 .pdp-back-link {
@@ -333,6 +340,8 @@
   line-height: 0.88;
   letter-spacing: 0.03em;
   color: var(--clr-text);
+  overflow-wrap: break-word; /* quebra nomes longos sem espaço */
+  word-break: break-word;
 }
 
 .pdp-category-tag {
@@ -394,6 +403,7 @@
   font-size: var(--text-base);
   color: var(--clr-text-md);
   line-height: 1.85;
+  overflow-wrap: break-word; /* garante quebra de texto em mobile */
 }
 
 /* CTA group */
@@ -772,6 +782,92 @@
 
 
 /* ══════════════════════════════════════════════════════
+   VARIANT SELECTORS — Sabores e Tamanhos
+   ══════════════════════════════════════════════════════ */
+.pdp-variants-container {
+  /* wrapper injetado pelo JS */
+}
+
+.pdp-variants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--clr-orange);
+}
+
+.pdp-variant-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.pdp-variant-group + .pdp-variant-group {
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--clr-border);
+}
+
+.pdp-variant-label {
+  font-size: var(--text-sm);
+  color: var(--clr-text-sm);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.pdp-variant-label strong {
+  color: var(--clr-text);
+  font-weight: 700;
+}
+
+.pdp-variant-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.pdp-variant-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--clr-border);
+  background: var(--clr-bg-elevated);
+  color: var(--clr-text-md);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    color        var(--t-fast) var(--ease-out),
+    background   var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out),
+    box-shadow   var(--t-fast) var(--ease-out);
+}
+
+.pdp-variant-btn:hover {
+  border-color: rgba(255, 107, 0, 0.55);
+  color: var(--clr-text);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.pdp-variant-btn.active {
+  border-color: var(--clr-orange);
+  background: rgba(255, 107, 0, 0.1);
+  color: var(--clr-orange);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--clr-orange);
+}
+
+.pdp-variant-btn:active {
+  transform: scale(0.97);
+}
+
+
+/* ══════════════════════════════════════════════════════
    RESPONSIVE — Tablet (≤ 1024px)
    ══════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
@@ -878,4 +974,15 @@
   .pdp-benefit-item {
     padding: var(--sp-3) var(--sp-4);
   }
+}
+
+/* Estilo para opções sem estoque (available: false) */
+.pdp-variant-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+  border-color: var(--clr-border);
+  background: transparent;
+  color: var(--clr-text-sm);
+  box-shadow: none;
 }

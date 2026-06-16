@@ -32,6 +32,12 @@
   var touchStartX    = 0;
 
   /* ══════════════════════════════════════════════════════
+     VARIANT STATE (sabores / tamanhos)
+     ══════════════════════════════════════════════════════ */
+  var selectedFlavor = null;
+  var selectedSize   = null;
+
+  /* ══════════════════════════════════════════════════════
      UTILITY
      ══════════════════════════════════════════════════════ */
   function escapeHTML(str) {
@@ -51,17 +57,17 @@
     return 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
   }
 
-  function getProductWaURL(p) {
-    var weight = p.weight ? ' (' + p.weight + ')' : '';
+  function getProductWaURL(p, flavor, size) {
+    var weight = size ? ' (' + size + ')' : (p.weight ? ' (' + p.weight + ')' : '');
     var price  = 'R$ ' + p.price.toFixed(2).replace('.', ',');
-    return getWaURL([
+    var lines = [
       'Olá! Tenho interesse no produto:',
       '',
       '*' + p.name + ' — ' + p.brand + weight + '*',
-      'Preço: *' + price + '*',
-      '',
-      'Poderia me passar mais informações? 🙏',
-    ].join('\n'));
+    ];
+    if (flavor) lines.push('Sabor: *' + flavor + '*');
+    lines.push('Preço: *' + price + '*', '', 'Poderia me passar mais informações? 🙏');
+    return getWaURL(lines.join('\n'));
   }
 
   function getGeneralWaURL() {
@@ -367,7 +373,13 @@
 
     /* WhatsApp CTA */
     var waBtn = $('pdpWA');
-    if (waBtn) waBtn.href = getProductWaURL(product);
+    if (waBtn) waBtn.href = getProductWaURL(product, selectedFlavor, selectedSize);
+  }
+
+  /* Helper — atualiza o link do WhatsApp principal sempre que sabor/tamanho mudar */
+  function updateWaLink() {
+    var waBtn = $('pdpWA');
+    if (waBtn) waBtn.href = getProductWaURL(product, selectedFlavor, selectedSize);
   }
 
   /* ══════════════════════════════════════════════════════
@@ -493,6 +505,118 @@
   }
 
   /* ══════════════════════════════════════════════════════
+     FLAVOR IMAGE — troca a imagem principal com fallback
+     ══════════════════════════════════════════════════════ */
+  function setFlavorImage(imagePath) {
+    if (!imagePath) return;
+    var testImg = new Image();
+    testImg.onload = function () {
+      galleryImages[0] = imagePath;
+      buildThumbs();
+      setMainImage(0);
+    };
+    /* onerror: imagem do sabor ainda não existe — mantém a atual */
+    testImg.src = imagePath;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     VARIANTS — Sabores e Tamanhos
+     ══════════════════════════════════════════════════════ */
+ function renderVariants() {
+    var container = $('pdpVariants');
+    if (!container) return;
+
+    var hasFlavors = product.flavors && product.flavors.length > 0;
+    var hasSizes   = product.sizes   && product.sizes.length   > 0;
+
+    if (!hasFlavors && !hasSizes) return;
+
+    container.style.display = '';
+
+    /* Inicializa o estado com o primeiro item (Lendo o .label) */
+    if (hasFlavors) selectedFlavor = product.flavors[0].label;
+    if (hasSizes)   selectedSize   = product.sizes[0].label;
+
+    var html = '<div class="pdp-variants">';
+
+    /* ── Sabores ────────────────────────────── */
+    if (hasFlavors) {
+      html += '<div class="pdp-variant-group">';
+      html += '<p class="pdp-variant-label">Sabor: <strong id="pdpFlavorLabel">' + escapeHTML(selectedFlavor) + '</strong></p>';
+      html += '<div class="pdp-variant-options" role="group" aria-label="Selecionar sabor">';
+      product.flavors.forEach(function (f, idx) {
+        var isDisabled = f.available === false ? ' disabled' : ''; // Trava o botão se não tiver estoque
+        html += '<button class="pdp-variant-btn' + (idx === 0 ? ' active' : '') + '"' +
+                ' data-type="flavor" data-idx="' + idx + '"' +
+                ' aria-pressed="' + (idx === 0 ? 'true' : 'false') + '"' + isDisabled + '>' +
+                escapeHTML(f.label) + '</button>';
+      });
+      html += '</div></div>';
+    }
+
+    /* ── Tamanhos ───────────────────────────── */
+    if (hasSizes) {
+      html += '<div class="pdp-variant-group">';
+      html += '<p class="pdp-variant-label">Quantidade: <strong id="pdpSizeLabel">' + escapeHTML(selectedSize) + '</strong></p>';
+      html += '<div class="pdp-variant-options" role="group" aria-label="Selecionar quantidade">';
+      product.sizes.forEach(function (s, idx) {
+        var isDisabled = s.available === false ? ' disabled' : ''; // Trava o botão se não tiver estoque
+        html += '<button class="pdp-variant-btn' + (idx === 0 ? ' active' : '') + '"' +
+                ' data-type="size" data-idx="' + idx + '"' +
+                ' aria-pressed="' + (idx === 0 ? 'true' : 'false') + '"' + isDisabled + '>' +
+                escapeHTML(s.label) + '</button>'; // Aqui conserta o [object Object]
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    /* ── Aplica imagem do primeiro sabor na galeria ── */
+    if (hasFlavors && product.flavors[0].image) {
+      setFlavorImage(product.flavors[0].image);
+    }
+
+    /* ── Eventos de clique ───────────────────── */
+    // O :not(:disabled) impede que o usuário clique no botão cinza
+    container.querySelectorAll('.pdp-variant-btn:not(:disabled)').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var type = btn.dataset.type;
+        var idx  = parseInt(btn.dataset.idx, 10);
+
+        /* Atualiza estado ativo do grupo */
+        container.querySelectorAll('.pdp-variant-btn[data-type="' + type + '"]')
+          .forEach(function (b) {
+            b.classList.remove('active');
+            b.setAttribute('aria-pressed', 'false');
+          });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+
+        if (type === 'flavor') {
+          var flavor = product.flavors[idx];
+          selectedFlavor = flavor.label;
+
+          /* Atualiza label */
+          var lbl = $('pdpFlavorLabel');
+          if (lbl) lbl.textContent = selectedFlavor;
+
+          /* Troca imagem principal */
+          setFlavorImage(flavor.image);
+
+        } else if (type === 'size') {
+          selectedSize = product.sizes[idx].label; // Lendo o .label no clique também
+          var sizeLbl = $('pdpSizeLabel');
+          if (sizeLbl) sizeLbl.textContent = selectedSize;
+        }
+
+        /* Atualiza link do WhatsApp com sabor/tamanho escolhidos */
+        updateWaLink();
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
      RELATED PRODUCTS
      ══════════════════════════════════════════════════════ */
   function buildCardHTML(p) {
@@ -536,7 +660,7 @@
       '        <i class="fa-solid fa-eye" aria-hidden="true"></i>',
       '        Mais Detalhes',
       '      </a>',
-      '      <a href="' + getProductWaURL(p) + '" target="_blank" rel="noopener noreferrer"',
+      '      <a href="' + getProductWaURL(p, null, null) + '" target="_blank" rel="noopener noreferrer"',
       '         class="btn btn--whatsapp">',
       '        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>',
       '        Comprar pelo WhatsApp',
@@ -673,6 +797,7 @@
     renderInfo();
     initGallery();
     initGalleryNav();
+    renderVariants();
     renderBenefits();
     renderIngredients();
     renderHowToUse();

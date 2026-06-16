@@ -219,6 +219,26 @@
           </p>
         </div>
 
+        <!-- Search Bar -->
+        <div class="search-bar-wrapper reveal">
+          <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass search-bar__icon" aria-hidden="true"></i>
+            <input
+              type="search"
+              id="productSearch"
+              class="search-bar__input"
+              placeholder="Buscar por nome, marca..."
+              aria-label="Buscar produtos"
+              autocomplete="off"
+              spellcheck="false"
+            >
+            <button class="search-bar__clear" id="searchClear" aria-label="Limpar busca" style="display:none">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </div>
+          <p class="search-results-count" id="searchResultsCount" aria-live="polite" style="display:none"></p>
+        </div>
+
         <!-- Category Filters -->
         <div class="filter-tabs-wrapper reveal">
           <div class="filter-tabs" id="filterTabs" role="tablist" aria-label="Filtrar por categoria"></div>
@@ -396,7 +416,7 @@
 
     <div class="footer__bottom">
       <div class="container footer__bottom-inner">
-        <p class="footer__copy">© 2025 Alphenix Suplementos · Todos os direitos reservados.</p>
+        <p class="footer__copy">© 2026 Alphenix Suplementos · Todos os direitos reservados.</p>
         <p class="footer__made">Feito com <span class="text-gradient" aria-label="fogo">🔥</span> para campeões</p>
       </div>
     </div>

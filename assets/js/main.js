@@ -11,19 +11,23 @@
   /* ══════════════════════════════════════════════════════
      DOM REFS
      ══════════════════════════════════════════════════════ */
-  var $loader        = document.getElementById('loader');
-  var $header        = document.getElementById('header');
-  var $hamburger     = document.getElementById('hamburger');
-  var $mobileMenu    = document.getElementById('mobileMenu');
-  var $filterTabs    = document.getElementById('filterTabs');
-  var $productsGrid  = document.getElementById('productsGrid');
-  var $productsEmpty = document.getElementById('productsEmpty');
-  var $embers        = document.getElementById('embers');
+  var $loader         = document.getElementById('loader');
+  var $header         = document.getElementById('header');
+  var $hamburger      = document.getElementById('hamburger');
+  var $mobileMenu     = document.getElementById('mobileMenu');
+  var $filterTabs     = document.getElementById('filterTabs');
+  var $productsGrid   = document.getElementById('productsGrid');
+  var $productsEmpty  = document.getElementById('productsEmpty');
+  var $embers         = document.getElementById('embers');
+  var $searchInput    = document.getElementById('productSearch');
+  var $searchClear    = document.getElementById('searchClear');
+  var $searchCount    = document.getElementById('searchResultsCount');
 
   /* ══════════════════════════════════════════════════════
      STATE
      ══════════════════════════════════════════════════════ */
   var activeCategory = 'all';
+  var searchQuery    = '';
   var revealObserver = null;
   var embersInterval = null;
 
@@ -38,6 +42,14 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /* Remove acentos e converte para minúsculas — para busca tolerante */
+  function normalizeStr(str) {
+    return String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
   }
 
   /* ══════════════════════════════════════════════════════
@@ -239,14 +251,43 @@
      PRODUCTS — render
      ══════════════════════════════════════════════════════ */
   function getFilteredProducts() {
-    if (activeCategory === 'all') return PRODUCTS;
-    return PRODUCTS.filter(function (p) { return p.category === activeCategory; });
+    var q = normalizeStr(searchQuery.trim());
+    return PRODUCTS.filter(function (p) {
+      var matchCat = activeCategory === 'all' || p.category === activeCategory;
+      if (!matchCat) return false;
+      if (!q) return true;
+      return (
+        normalizeStr(p.name).indexOf(q) >= 0 ||
+        normalizeStr(p.brand).indexOf(q) >= 0 ||
+        normalizeStr(p.description).indexOf(q) >= 0
+      );
+    });
   }
 
   function renderProducts(products) {
+    /* ── Search results counter ── */
+    var q = searchQuery.trim();
+    if ($searchCount) {
+      if (q) {
+        $searchCount.style.display = 'block';
+        var count = products.length;
+        $searchCount.innerHTML = count > 0
+          ? '<span>' + count + '</span> resultado' + (count !== 1 ? 's' : '') + ' para "<span>' + escapeHTML(q) + '</span>"'
+          : 'Nenhum resultado para "<span>' + escapeHTML(q) + '</span>"';
+      } else {
+        $searchCount.style.display = 'none';
+      }
+    }
+
     if (!products || products.length === 0) {
       $productsGrid.innerHTML = '';
       $productsEmpty.style.display = 'flex';
+      var emptyMsg = $productsEmpty.querySelector('p');
+      if (emptyMsg) {
+        emptyMsg.textContent = q
+          ? 'Nenhum produto encontrado para "' + q + '".'
+          : 'Nenhum produto nesta categoria.';
+      }
       return;
     }
     $productsEmpty.style.display = 'none';
@@ -332,6 +373,51 @@
   }
 
   /* ══════════════════════════════════════════════════════
+     SEARCH — real-time filtering
+     ══════════════════════════════════════════════════════ */
+  function initSearch() {
+    if (!$searchInput) return;
+
+    var debounceTimer = null;
+
+    $searchInput.addEventListener('input', function () {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        searchQuery = $searchInput.value;
+        var hasQuery = searchQuery.trim().length > 0;
+        if ($searchClear) $searchClear.style.display = hasQuery ? 'flex' : 'none';
+
+        $productsGrid.style.cssText = 'opacity:0;transform:translateY(10px);transition:opacity 160ms,transform 160ms';
+        setTimeout(function () {
+          renderProducts(getFilteredProducts());
+          $productsGrid.style.cssText = 'opacity:1;transform:translateY(0);transition:opacity 220ms,transform 220ms';
+        }, 160);
+      }, 200);
+    });
+
+    if ($searchClear) {
+      $searchClear.addEventListener('click', function () {
+        $searchInput.value = '';
+        searchQuery = '';
+        $searchClear.style.display = 'none';
+        if ($searchCount) $searchCount.style.display = 'none';
+        $searchInput.focus();
+        renderProducts(getFilteredProducts());
+      });
+    }
+
+    /* Clear search when user switches category */
+    $filterTabs.addEventListener('click', function (e) {
+      if (e.target.closest('.filter-tab') && searchQuery) {
+        $searchInput.value = '';
+        searchQuery = '';
+        if ($searchClear) $searchClear.style.display = 'none';
+        if ($searchCount) $searchCount.style.display = 'none';
+      }
+    }, true);
+  }
+
+  /* ══════════════════════════════════════════════════════
      FOOTER CATEGORIES
      ══════════════════════════════════════════════════════ */
   function initFooterCategories() {
@@ -403,6 +489,7 @@
     initMobileMenu();
     initEmbers();
     initFilters();
+    initSearch();
     renderProducts(PRODUCTS);
     initWhatsAppLinks();
     initFooterCategories();
