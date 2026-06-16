@@ -21,9 +21,20 @@ import { cookies } from 'next/headers';
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
+  // Sanitize: remove trailing slash e whitespace (evita "Invalid path" no PostgREST)
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim().replace(/\/$/, '');
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
+
+  if (!url || !key) {
+    throw new Error(
+      '[Alphenix] Variáveis de ambiente do Supabase ausentes.\n' +
+      'Verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env.local'
+    );
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() {
@@ -56,8 +67,17 @@ export async function createSupabaseServerClient() {
  * }
  */
 export function createSupabaseStaticClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Trim whitespace e remove barra final — causas comuns de "Invalid path"
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim().replace(/\/$/, '');
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
+
+  if (!url || !key) {
+    throw new Error(
+      '[Alphenix] Variáveis de ambiente do Supabase ausentes.\n' +
+      'Verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env.local\n' +
+      'e reinicie o servidor de desenvolvimento (next dev).'
+    );
+  }
+
+  return createClient(url, key);
 }

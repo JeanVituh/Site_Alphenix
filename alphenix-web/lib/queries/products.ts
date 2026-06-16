@@ -68,17 +68,26 @@ export async function getProductBySlug(
  * dentro de generateStaticParams, que roda em build-time.
  */
 export async function getAllProductSlugs(): Promise<string[]> {
-  const supabase = createSupabaseStaticClient(); // sem await — não usa cookies
+  try {
+    const supabase = createSupabaseStaticClient();
 
-  const { data, error } = await supabase
-    .from('products')
-    .select('slug')
-    .eq('active', true)
-    .order('created_at', { ascending: true });
+    const { data, error } = await supabase
+      .from('products')
+      .select('slug')
+      .eq('active', true)
+      .order('created_at', { ascending: true });
 
-  if (error) throw new Error(`[getAllProductSlugs] ${error.message}`);
+    if (error) {
+      // Loga mas não explode o build — páginas serão renderizadas dinamicamente
+      console.warn(`[getAllProductSlugs] ${error.message}`);
+      return [];
+    }
 
-  return (data ?? []).map(p => p.slug);
+    return (data ?? []).map(p => p.slug);
+  } catch (err) {
+    console.warn('[getAllProductSlugs] Falha ao buscar slugs, rotas serão dinâmicas:', err);
+    return [];
+  }
 }
 
 // ── getAllProducts ────────────────────────────────────────────────

@@ -13,9 +13,16 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  // Sanitize: remove \r (Windows), espaços e barra final do .env.local
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim().replace(/\/$/, '');
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').trim();
+
+  // Se as variáveis não estiverem configuradas, deixa a request passar
+  if (!url || !key) return supabaseResponse;
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() {

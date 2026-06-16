@@ -8,12 +8,20 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getProductBySlug, getAllProductSlugs } from '@/lib/queries/products';
+import type { NutritionFacts } from '@/lib/types';
 import { VariantSelector } from '@/components/VariantSelector';
 
 // ── Rotas estáticas no build ─────────────────────────────────────
 export async function generateStaticParams() {
-  const slugs = await getAllProductSlugs();
-  return slugs.map(slug => ({ slug }));
+  try {
+    const slugs = await getAllProductSlugs();
+    return slugs.map(slug => ({ slug }));
+  } catch (err) {
+    // Se o Supabase não estiver acessível em build-time,
+    // retorna [] — as rotas serão renderizadas dinamicamente.
+    console.warn('[generateStaticParams] Pulando pré-geração de rotas:', err);
+    return [];
+  }
 }
 
 // ── Metadata dinâmica por produto ────────────────────────────────
@@ -38,6 +46,13 @@ export async function generateMetadata(
   };
 }
 
+
+// ── Helper: garante que paths de assets comecem com / ───────────────
+function assetUrl(path: string): string {
+  if (!path) return path;
+  if (path.startsWith('http') || path.startsWith('/')) return path;
+  return '/' + path;
+}
 
 // ── Componente de Preço (renderizado no servidor) ─────────────────
 // Exibe o preço base; o VariantSelector atualiza via estado no client.
@@ -67,7 +82,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
     <div className="pdp-gallery">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={mainImage}
+        src={assetUrl(mainImage)}
         alt={name}
         className="pdp-gallery__main"
         width={600}
@@ -79,7 +94,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={i}
-              src={src}
+              src={assetUrl(src)}
               alt={`${name} — imagem ${i + 1}`}
               className="pdp-gallery__thumb"
               width={80}
@@ -93,7 +108,7 @@ function ProductGallery({ images, name }: { images: string[]; name: string }) {
 }
 
 // ── Tabela Nutricional ────────────────────────────────────────────
-function NutritionTable({ nutrition }: { nutrition: Record<string, string| undefined> | null }) {
+function NutritionTable({ nutrition }: { nutrition: NutritionFacts | null }) {
   if (!nutrition) return null;
 
   const labels: Record<string, string> = {
@@ -116,12 +131,14 @@ function NutritionTable({ nutrition }: { nutrition: Record<string, string| undef
       <h3 className="pdp-section-title">Informações Nutricionais</h3>
       <table className="pdp-nutrition__table">
         <tbody>
-          {Object.entries(nutrition).map(([key, value]) => (
-            <tr key={key} className="pdp-nutrition__row">
-              <td className="pdp-nutrition__label">{labels[key] ?? key}</td>
-              <td className="pdp-nutrition__value">{value}</td>
-            </tr>
-          ))}
+          {(Object.entries(nutrition) as [string, string | undefined][])
+            .filter((entry): entry is [string, string] => entry[1] !== undefined)
+            .map(([key, value]) => (
+              <tr key={key} className="pdp-nutrition__row">
+                <td className="pdp-nutrition__label">{labels[key] ?? key}</td>
+                <td className="pdp-nutrition__value">{value}</td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </section>
