@@ -1,4 +1,18 @@
+// ================================================================
+//  ALPHENIX — app/layout.tsx (Versão Corrigida)
+// ================================================================
+
 import type { Metadata } from 'next';
+import { RevealAnimations } from '@/components/RevealAnimations';
+
+// ─── IMPORTAÇÃO CORRETA DOS ARQUIVOS CSS ───
+// Mudamos de tags <link> para imports normais. A ordem original foi mantida!
+// Nota: Se o seu projeto usar a pasta 'src', mude o início do caminho para '../../public'
+import '@/public/assets/css/variables.css';
+import '@/public/assets/css/base.css';
+import '@/public/assets/css/animations.css';
+import '@/public/assets/css/components.css';
+import '@/public/assets/css/produto.css';
 
 export const metadata: Metadata = {
   title: 'Alphenix | Suplementos Premium',
@@ -16,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        {/* Fontes */}
+        {/* Fontes Externas (Podem continuar aqui sem problemas) */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -29,22 +43,16 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
         />
-
-        {/* ─── CSS do projeto (ordem importa!) ─── */}
-        {/* 1. Tokens de design — deve vir antes de tudo */}
-        <link rel="stylesheet" href="/assets/css/variables.css" />
-        {/* 2. Reset e utilitários globais */}
-        <link rel="stylesheet" href="/assets/css/base.css" />
-        {/* 3. Keyframes e animações */}
-        <link rel="stylesheet" href="/assets/css/animations.css" />
-        {/* 4. Componentes globais (header, footer, cards...) */}
-        <link rel="stylesheet" href="/assets/css/components.css" />
-        {/* 5. Estilos da página de produto
-               ⚠️ ESTAVA FALTANDO — causa das classes pdp-* sem efeito */}
-        <link rel="stylesheet" href="/assets/css/produto.css" />
       </head>
-      <body>
+      <body className="loaded">
         {children}
+
+        {/*
+          RevealAnimations: ativa .reveal → .visible via IntersectionObserver.
+          Deve ficar DEPOIS de {children} para que o DOM já exista quando
+          o useEffect rodar.
+        */}
+        <RevealAnimations />
       </body>
     </html>
   );

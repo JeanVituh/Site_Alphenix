@@ -1,6 +1,14 @@
 // ================================================================
 //  ALPHENIX — Página de Produto (app/produtos/[slug]/page.tsx)
 //
+//  Alterações em relação à versão anterior:
+//  1. <div className="pdp-col-info"> — removida a classe `reveal`.
+//     Motivo: pdp-col-info é o pai de TUDO na coluna direita.
+//     Com `reveal` (opacity:0) no pai, mesmo que os filhos
+//     recebessem `visible`, continuariam invisíveis.
+//     A coluna principal deve ser sempre visível; só as seções
+//     internas (benefits, how-to-use) têm scroll-reveal individual.
+//
 //  Server Component: fetch no servidor, zero JS extra pro cliente.
 //  O VariantSelector é o único Client Component nessa página.
 // ================================================================
@@ -17,8 +25,6 @@ export async function generateStaticParams() {
     const slugs = await getAllProductSlugs();
     return slugs.map(slug => ({ slug }));
   } catch (err) {
-    // Se o Supabase não estiver acessível em build-time,
-    // retorna [] — as rotas serão renderizadas dinamicamente.
     console.warn('[generateStaticParams] Pulando pré-geração de rotas:', err);
     return [];
   }
@@ -50,12 +56,12 @@ export async function generateMetadata(
 // ── Helper: garante que paths de assets comecem com / ───────────────
 function assetUrl(path: string): string {
   if (!path) return path;
+  // URLs do Supabase Storage (https://...) ou caminhos já absolutos
   if (path.startsWith('http') || path.startsWith('/')) return path;
   return '/' + path;
 }
 
 // ── Componente de Preço (renderizado no servidor) ─────────────────
-// Exibe o preço base; o VariantSelector atualiza via estado no client.
 function PriceDisplay({ basePrice }: { basePrice: number }) {
   return (
     <div className="pdp-price-wrapper">
@@ -68,7 +74,6 @@ function PriceDisplay({ basePrice }: { basePrice: number }) {
 }
 
 // ── Galeria de Imagens ────────────────────────────────────────────
-// Client Component separado seria ideal; aqui simplificado como Server.
 function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const mainImage = images[0];
   if (!mainImage) {
@@ -151,7 +156,6 @@ export default async function ProductPage(
 ) {
   const { slug } = await params;
 
-  // Fetch completo no servidor — sem loading spinner, sem waterfall
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
@@ -167,8 +171,15 @@ export default async function ProductPage(
             <ProductGallery images={product.images} name={product.name} />
           </div>
 
-          {/* ── Coluna direita: info + variações ── */}
-          <div className="pdp-col-info reveal">
+          {/* ── Coluna direita: info + variações ──
+              ⚠️ REMOVIDA a classe `reveal` deste div.
+              Motivo: este é o PAI de todo o conteúdo visível.
+              Com reveal (opacity:0) no pai, os filhos ficavam
+              invisíveis mesmo depois de receber .visible.
+              As seções internas (benefits, how-to-use) têm
+              seu próprio reveal para animar individualmente.
+          ── */}
+          <div className="pdp-col-info">
 
             {/* Badge e eyebrow */}
             {product.badge && (
@@ -201,7 +212,7 @@ export default async function ProductPage(
               </a>
             )}
 
-            {/* Benefícios */}
+            {/* Benefícios — mantém `reveal` para animar ao entrar na tela */}
             {product.benefits.length > 0 && (
               <section className="pdp-benefits reveal reveal-delay-1">
                 <h3 className="pdp-section-title">Benefícios</h3>
@@ -215,7 +226,7 @@ export default async function ProductPage(
               </section>
             )}
 
-            {/* Modo de uso */}
+            {/* Modo de uso — mantém `reveal` para animar ao entrar na tela */}
             {product.how_to_use.length > 0 && (
               <section className="pdp-how-to-use reveal reveal-delay-2">
                 <h3 className="pdp-section-title">Como usar</h3>
@@ -232,7 +243,7 @@ export default async function ProductPage(
           </div>
         </div>
 
-        {/* Tabela nutricional (largura total) */}
+        {/* Tabela nutricional (largura total) — mantém `reveal` */}
         <NutritionTable nutrition={product.nutrition} />
       </div>
     </main>
