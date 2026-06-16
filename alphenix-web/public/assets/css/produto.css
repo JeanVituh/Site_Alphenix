@@ -1,0 +1,1292 @@
+/**
+ * ALPHENIX — produto.css
+ * Estilos exclusivos da página de detalhes do produto (produto.html).
+ * Depende de: variables.css · base.css · animations.css · components.css
+ */
+
+/* ══════════════════════════════════════════════════════
+   NOT FOUND
+   ══════════════════════════════════════════════════════ */
+.pdp-not-found {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--header-h);
+}
+
+.pdp-not-found__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+  text-align: center;
+  padding: var(--sp-16);
+}
+
+.pdp-not-found__icon {
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.pdp-not-found__inner h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  letter-spacing: 0.04em;
+  color: var(--clr-text);
+}
+
+.pdp-not-found__inner p {
+  font-size: var(--text-lg);
+  color: var(--clr-text-md);
+  max-width: 400px;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   BREADCRUMB
+   ══════════════════════════════════════════════════════ */
+.pdp-breadcrumb {
+  padding-top: calc(var(--header-h) + var(--sp-5));
+  padding-bottom: var(--sp-4);
+  background: var(--clr-bg);
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.pdp-breadcrumb__inner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  color: var(--clr-text-sm);
+}
+
+.pdp-breadcrumb__inner a {
+  color: var(--clr-text-sm);
+  transition: color var(--t-fast);
+}
+
+.pdp-breadcrumb__inner a:hover {
+  color: var(--clr-orange);
+}
+
+.pdp-breadcrumb__inner i {
+  font-size: 0.6rem;
+  opacity: 0.5;
+}
+
+.pdp-breadcrumb__current {
+  color: var(--clr-text-md);
+  font-weight: 500;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   HERO: GALLERY + INFO
+   ══════════════════════════════════════════════════════ */
+.pdp-hero {
+  padding-block: var(--sp-12) var(--sp-16);
+  background: var(--clr-bg);
+  overflow-x: hidden;
+}
+
+.pdp-hero__inner {
+  display: grid;
+  grid-template-columns: 54% 1fr;
+  gap: var(--sp-16);
+  align-items: start;
+  max-width: 100%;
+}
+
+
+/* ── Gallery ─────────────────────────────────────── */
+.pdp-gallery {
+  position: sticky;
+  top: calc(var(--header-h) + var(--sp-4));
+  min-width: 0; /* evita overflow horizontal no CSS Grid */
+}
+
+.pdp-gallery__stage {
+  position: relative;
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--t-base);
+  contain: strict;
+}
+
+.pdp-gallery__stage:hover {
+  border-color: rgba(255, 107, 0, 0.3);
+}
+
+.pdp-main-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  max-width: 100%;
+  max-height: 100%;
+  padding: var(--sp-8);
+  display: block;
+  position: relative;
+  transition: opacity var(--t-base) var(--ease-out);
+}
+
+.pdp-gallery__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xl);
+}
+
+.pdp-gallery__placeholder span {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 10vw, 6rem);
+  letter-spacing: 0.1em;
+  opacity: 0.9;
+}
+
+/* Arrows */
+.pdp-arrow {
+  position: absolute;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: rgba(8, 8, 8, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background   var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color        var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out);
+  font-size: 0.85rem;
+}
+
+.pdp-arrow:hover {
+  background: rgba(255, 107, 0, 0.2);
+  border-color: var(--clr-orange);
+  color: var(--clr-orange);
+  transform: scale(1.08);
+}
+
+.pdp-arrow--prev {
+  left: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.pdp-arrow--prev:hover {
+  transform: translateY(-50%) scale(1.08);
+}
+
+.pdp-arrow--next {
+  right: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.pdp-arrow--next:hover {
+  transform: translateY(-50%) scale(1.08);
+}
+
+.pdp-arrow--hidden {
+  display: none !important;
+}
+
+/* Thumbnails */
+.pdp-thumbs {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: var(--sp-1);
+}
+
+.pdp-thumbs::-webkit-scrollbar { display: none; }
+
+.pdp-thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius);
+  border: 2px solid var(--clr-border);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--clr-bg-card);
+  padding: 0;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out),
+    box-shadow   var(--t-fast) var(--ease-out);
+}
+
+.pdp-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--t-base) var(--ease-out);
+}
+
+.pdp-thumb:hover {
+  border-color: rgba(255, 107, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+.pdp-thumb:hover img {
+  transform: scale(1.06);
+}
+
+.pdp-thumb.active {
+  border-color: var(--clr-orange);
+  box-shadow: 0 0 12px rgba(255, 107, 0, 0.3);
+}
+
+
+/* ── Info Column ─────────────────────────────────── */
+.pdp-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  min-width: 0; /* evita overflow horizontal no CSS Grid */
+}
+
+.pdp-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--clr-text-sm);
+  letter-spacing: 0.04em;
+  transition: color var(--t-fast);
+  width: fit-content;
+}
+
+.pdp-back-link:hover {
+  color: var(--clr-orange);
+}
+
+.pdp-back-link i {
+  font-size: 0.8rem;
+}
+
+.pdp-info__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.pdp-info__top-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.pdp-brand {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--clr-orange);
+}
+
+.pdp-weight-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  background: var(--clr-bg-elevated);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--clr-text-sm);
+}
+
+.pdp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  background: rgba(255, 69, 0, 0.12);
+  border: 1px solid rgba(255, 69, 0, 0.3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--clr-orange-lt);
+  letter-spacing: 0.04em;
+  width: fit-content;
+}
+
+.pdp-name {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 4.5vw, 4.5rem);
+  line-height: 0.88;
+  letter-spacing: 0.03em;
+  color: var(--clr-text);
+  overflow-wrap: break-word; /* quebra nomes longos sem espaço */
+  word-break: break-word;
+}
+
+.pdp-category-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  background: var(--clr-bg-elevated);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--clr-text-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+/* Price block */
+.pdp-price-block {
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--clr-orange);
+}
+
+.pdp-price {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.pdp-price__curr {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--clr-text-sm);
+}
+
+.pdp-price__val {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pdp-price__note {
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  color: var(--clr-text-xs);
+  line-height: 1.5;
+}
+
+/* Description */
+.pdp-description {
+  font-size: var(--text-base);
+  color: var(--clr-text-md);
+  line-height: 1.85;
+  overflow-wrap: break-word; /* garante quebra de texto em mobile */
+}
+
+/* CTA group */
+.pdp-cta-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.pdp-cta-main {
+  font-size: var(--text-base);
+  padding: 16px 28px;
+  border-radius: var(--radius);
+  animation: glowRingPulse 2.5s ease-in-out infinite;
+}
+
+.pdp-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 12px 20px;
+  background: transparent;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--clr-text-sm);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    color        var(--t-fast) var(--ease-out),
+    background   var(--t-fast) var(--ease-out);
+}
+
+.pdp-share-btn:hover {
+  border-color: var(--clr-orange);
+  color: var(--clr-orange);
+  background: rgba(255, 107, 0, 0.05);
+}
+
+
+/* ══════════════════════════════════════════════════════
+   STICKY DETAIL NAV
+   ══════════════════════════════════════════════════════ */
+.pdp-details-nav {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 50;
+  background: rgba(8, 8, 8, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--clr-border);
+  border-top: 1px solid var(--clr-border);
+  overflow: hidden;
+}
+
+.pdp-details-nav__inner {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+
+.pdp-details-nav__inner::-webkit-scrollbar { display: none; }
+
+.pdp-details-nav__link {
+  flex-shrink: 0;
+  padding: var(--sp-4) var(--sp-6);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--clr-text-sm);
+  border-bottom: 2px solid transparent;
+  transition:
+    color        var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.pdp-details-nav__link:hover {
+  color: var(--clr-text);
+}
+
+.pdp-details-nav__link.active {
+  color: var(--clr-orange);
+  border-bottom-color: var(--clr-orange);
+}
+
+
+/* ══════════════════════════════════════════════════════
+   DETAIL SECTIONS
+   ══════════════════════════════════════════════════════ */
+.pdp-details {
+  padding-block: var(--sp-4) var(--sp-20);
+  background: var(--clr-bg);
+  overflow-x: hidden;
+}
+
+.pdp-section {
+  padding-block: var(--sp-12);
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.pdp-section:last-of-type {
+  border-bottom: none;
+}
+
+.pdp-section__title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  letter-spacing: 0.04em;
+  color: var(--clr-text);
+  margin-bottom: var(--sp-8);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.pdp-section__title i {
+  font-size: 1.4rem;
+  color: var(--clr-orange);
+  flex-shrink: 0;
+}
+
+
+/* ── Benefits Grid ───────────────────────────────── */
+.pdp-benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-4);
+}
+
+.pdp-benefit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--clr-text-md);
+  line-height: 1.55;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out);
+}
+
+.pdp-benefit-item:hover {
+  border-color: rgba(255, 107, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.pdp-benefit-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 107, 0, 0.12);
+  color: var(--clr-orange);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+
+/* ── Ingredients Box ─────────────────────────────── */
+.pdp-ingredients-box {
+  padding: var(--sp-6) var(--sp-7);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--clr-border-glow);
+}
+
+.pdp-ingredients-box p {
+  font-size: var(--text-base);
+  color: var(--clr-text-md);
+  line-height: 1.85;
+}
+
+
+/* ── Steps (How To Use) ──────────────────────────── */
+.pdp-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  list-style: none;
+}
+
+.pdp-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out);
+}
+
+.pdp-step:hover {
+  border-color: rgba(255, 107, 0, 0.25);
+  transform: translateX(4px);
+}
+
+.pdp-step__num {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--grad-fire);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: #fff;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 16px rgba(255, 107, 0, 0.3);
+}
+
+.pdp-step__text {
+  font-size: var(--text-base);
+  color: var(--clr-text-md);
+  line-height: 1.75;
+  padding-top: 8px;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   NUTRITION TABLE
+   ══════════════════════════════════════════════════════ */
+.pdp-nutrition-wrap {
+  max-width: 520px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.nutrition-card {
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.nutrition-card__header {
+  padding: 32px 32px 20px;
+  background: linear-gradient(135deg, #1c1c1c 0%, #0f0f0f 100%);
+  border-bottom: 3px solid var(--clr-orange);
+}
+
+.nutrition-card__title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  letter-spacing: 0.1em;
+  color: var(--clr-text);
+  line-height: 2;
+  margin-bottom: var(--sp-2);
+}
+
+.nutrition-card__serving {
+  font-size: var(--text-sm);
+  color: var(--clr-text-md);
+  font-weight: 500;
+}
+
+.nutrition-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nutrition-table thead tr {
+  background: rgba(255, 107, 0, 0.06);
+  border-bottom: 1px solid rgba(255, 107, 0, 0.2);
+}
+
+.nutrition-table thead th {
+  padding-left: 32px;
+  padding-right: 32px;
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clr-text-sm);
+}
+
+.nutrition-table tbody tr {
+  border-bottom: 1px solid var(--clr-border);
+  transition: background var(--t-fast);
+}
+
+.nutrition-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.nutrition-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.nutrition-table tbody tr:hover {
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.nutrition-table td {
+  padding-left: 32px;
+  padding-right: 32px;
+  font-size: var(--text-sm);
+  vertical-align: middle;
+}
+
+.nutrition-table td:first-child {
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.nutrition-table td:last-child {
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  letter-spacing: 0.04em;
+  color: var(--clr-gold);
+}
+
+/* Calories row — highlighted */
+.nt-row--calories {
+  background: rgba(255, 107, 0, 0.05) !important;
+  border-bottom: 2px solid rgba(255, 107, 0, 0.2) !important;
+}
+
+.nt-row--calories td:first-child {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+.nt-row--calories td:last-child {
+  font-size: var(--text-2xl);
+  color: var(--clr-orange);
+}
+
+.nutrition-card__disclaimer {
+  padding: 12px 32px 20px;
+  background: var(--clr-bg);
+  border-top: 1px solid var(--clr-border);
+  font-size: var(--text-xs);
+  color: var(--clr-text-xs);
+  line-height: 1.7;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   RELATED PRODUCTS
+   ══════════════════════════════════════════════════════ */
+.pdp-related {
+  padding-block: var(--sp-24);
+  border-top: 1px solid var(--clr-border);
+  background: linear-gradient(180deg, #0a0a0a 0%, var(--clr-bg) 100%);
+}
+
+.pdp-related__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-5);
+}
+
+
+/* ══════════════════════════════════════════════════════
+   VARIANT SELECTORS — Sabores e Tamanhos
+   ══════════════════════════════════════════════════════ */
+.pdp-variants-container {
+  /* wrapper injetado pelo JS */
+}
+
+.pdp-variants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--clr-orange);
+}
+
+.pdp-variant-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.pdp-variant-group + .pdp-variant-group {
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--clr-border);
+}
+
+.pdp-variant-label {
+  font-size: var(--text-sm);
+  color: var(--clr-text-sm);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.pdp-variant-label strong {
+  color: var(--clr-text);
+  font-weight: 700;
+}
+
+.pdp-variant-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.pdp-variant-btn {
+  padding: 7px 16px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--clr-border);
+  background: var(--clr-bg-elevated);
+  color: var(--clr-text-md);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    color        var(--t-fast) var(--ease-out),
+    background   var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out),
+    box-shadow   var(--t-fast) var(--ease-out);
+}
+
+.pdp-variant-btn:hover {
+  border-color: rgba(255, 107, 0, 0.55);
+  color: var(--clr-text);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.pdp-variant-btn.active {
+  border-color: var(--clr-orange);
+  background: rgba(255, 107, 0, 0.1);
+  color: var(--clr-orange);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--clr-orange);
+}
+
+.pdp-variant-btn:active {
+  transform: scale(0.97);
+}
+
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — Tablet (≤ 1024px)
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .pdp-hero__inner {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-10);
+  }
+
+  .pdp-related__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .pdp-benefits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+
+/* ── Small tablet (≤ 860px) ───────────────────────── */
+@media (max-width: 860px) {
+  .pdp-hero__inner {
+    grid-template-columns: 1fr;
+    gap: var(--sp-8);
+  }
+
+  .pdp-gallery {
+    position: relative;
+    top: auto;
+    max-width: 480px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .pdp-name {
+    font-size: clamp(2.2rem, 7vw, 3.2rem);
+  }
+
+  .pdp-price__val {
+    font-size: clamp(2.5rem, 8vw, 4rem);
+  }
+
+  .pdp-related__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pdp-details-nav__link {
+    padding: var(--sp-3) var(--sp-4);
+    font-size: var(--text-xs);
+  }
+}
+
+
+/* ── Mobile (≤ 640px) ─────────────────────────────── */
+@media (max-width: 640px) {
+  .pdp-hero {
+    padding-block: var(--sp-6) var(--sp-10);
+  }
+
+  .pdp-benefits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pdp-related__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-4);
+  }
+
+  .pdp-nutrition-wrap {
+    max-width: 100%;
+  }
+
+  .nutrition-table td {
+    padding: var(--sp-3) var(--sp-5);
+  }
+
+  .nutrition-card__header,
+  .nutrition-table thead th,
+  .nutrition-card__disclaimer {
+    padding-inline: var(--sp-5);
+  }
+
+  .pdp-thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .pdp-step {
+    padding: var(--sp-4);
+    gap: var(--sp-4);
+  }
+}
+
+
+/* ── Smallest (≤ 400px) ───────────────────────────── */
+@media (max-width: 400px) {
+  .pdp-related__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pdp-breadcrumb__inner {
+    font-size: var(--text-xs);
+  }
+
+  .pdp-benefit-item {
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+
+/* Estilo para opções sem estoque (available: false) */
+.pdp-variant-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: line-through;
+  border-color: var(--clr-border);
+  background: transparent;
+  color: var(--clr-text-sm);
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ALPHENIX — pdp-nextjs-patch.css
+   
+   Cole este bloco inteiro ao FINAL do seu produto.css.
+   Adiciona as classes que o page.tsx usa e que não existiam
+   no HTML original (nomes novos criados durante a migração).
+   ═══════════════════════════════════════════════════════════════ */
+
+
+/* ── Layout principal da página ────────────────────────────── */
+.pdp-page {
+  padding-top: calc(var(--header-h) + var(--sp-12));
+  padding-bottom: var(--sp-24);
+  min-height: 100vh;
+  background: var(--clr-bg);
+}
+
+/* ATENÇÃO: Se você não tem um <Header> no layout.tsx,
+   reduza o padding-top: apenas var(--sp-12) */
+
+.pdp-layout {
+  display: grid;
+  grid-template-columns: 54% 1fr;
+  gap: var(--sp-16);
+  align-items: start;
+}
+
+.pdp-col-media {
+  position: sticky;
+  top: calc(var(--header-h) + var(--sp-4));
+  min-width: 0;
+}
+
+.pdp-col-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  min-width: 0;
+}
+
+
+/* ── Título (page.tsx usa pdp-title; HTML original usava pdp-name) ── */
+.pdp-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 4.5vw, 4.5rem);
+  line-height: 0.88;
+  letter-spacing: 0.03em;
+  color: var(--clr-text);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+
+/* ── Bloco de preço ─────────────────────────────────────────── */
+.pdp-price-wrapper {
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  border-left: 3px solid var(--clr-orange);
+}
+
+/* Sobrescreve o .pdp-price (flex) de produto.css quando dentro do wrapper */
+.pdp-price-wrapper .pdp-price {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pdp-price-note {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--text-xs);
+  color: var(--clr-text-xs);
+  line-height: 1.5;
+}
+
+
+/* ── Galeria (page.tsx usa nomes diferentes do HTML original) ── */
+.pdp-gallery-placeholder {
+  aspect-ratio: 1 / 1;
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--clr-text-sm);
+  font-size: var(--text-lg);
+}
+
+/* HTML original: .pdp-main-img → Next.js: .pdp-gallery__main */
+.pdp-gallery__main {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  object-position: center;
+  padding: var(--sp-8);
+  display: block;
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  transition: border-color var(--t-base);
+}
+
+.pdp-gallery__main:hover {
+  border-color: rgba(255, 107, 0, 0.3);
+}
+
+/* HTML original: .pdp-thumbs → Next.js: .pdp-gallery__thumbs */
+.pdp-gallery__thumbs {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: var(--sp-1);
+}
+
+.pdp-gallery__thumbs::-webkit-scrollbar { display: none; }
+
+/* HTML original: .pdp-thumb → Next.js: .pdp-gallery__thumb */
+.pdp-gallery__thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 2px solid var(--clr-border);
+  cursor: pointer;
+  background: var(--clr-bg-card);
+  display: block;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out);
+}
+
+.pdp-gallery__thumb:hover {
+  border-color: rgba(255, 107, 0, 0.6);
+  transform: translateY(-2px);
+}
+
+
+/* ── Títulos de seção (pdp-section__title → pdp-section-title) ── */
+.pdp-section-title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  letter-spacing: 0.04em;
+  color: var(--clr-text);
+  margin-bottom: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+
+/* ── Benefícios ─────────────────────────────────────────────── */
+.pdp-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.pdp-benefits__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  list-style: none;
+}
+
+.pdp-benefits__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  color: var(--clr-text-md);
+  line-height: 1.55;
+  transition:
+    border-color var(--t-fast) var(--ease-out),
+    transform    var(--t-fast) var(--ease-out);
+}
+
+.pdp-benefits__item:hover {
+  border-color: rgba(255, 107, 0, 0.3);
+  transform: translateX(4px);
+}
+
+
+/* ── Modo de uso ────────────────────────────────────────────── */
+.pdp-how-to-use {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+
+/* ── Tabela nutricional (nomes novos no Next.js) ────────────── */
+.pdp-nutrition {
+  max-width: 540px;
+  width: 100%;
+  margin-top: var(--sp-12);
+  padding-top: var(--sp-8);
+  border-top: 1px solid var(--clr-border);
+}
+
+.pdp-nutrition__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--clr-bg-card);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.pdp-nutrition__row {
+  border-bottom: 1px solid var(--clr-border);
+  transition: background var(--t-fast);
+}
+
+.pdp-nutrition__row:last-child { border-bottom: none; }
+
+.pdp-nutrition__row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pdp-nutrition__row:hover {
+  background: rgba(255, 107, 0, 0.04);
+}
+
+.pdp-nutrition__label,
+.pdp-nutrition__value {
+  padding: var(--sp-3) var(--sp-5);
+  font-size: var(--text-sm);
+  vertical-align: middle;
+}
+
+.pdp-nutrition__label {
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.pdp-nutrition__value {
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  letter-spacing: 0.04em;
+  color: var(--clr-gold);
+}
+
+
+/* ── Responsivo ─────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .pdp-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-10);
+  }
+}
+
+@media (max-width: 860px) {
+  .pdp-layout {
+    grid-template-columns: 1fr;
+    gap: var(--sp-8);
+  }
+
+  .pdp-col-media {
+    position: relative;
+    top: auto;
+    max-width: 480px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .pdp-nutrition {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .pdp-page {
+    padding-top: calc(var(--header-h) + var(--sp-6));
+    padding-bottom: var(--sp-16);
+  }
+
+  .pdp-gallery__thumb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .pdp-nutrition__label,
+  .pdp-nutrition__value {
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
