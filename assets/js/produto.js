@@ -1,7 +1,7 @@
 /**
  * ╔══════════════════════════════════════════════════════════════╗
- * ║              ALPHENIX — produto.js                          ║
- * ║  Script da página de detalhes do produto (produto.html)    ║
+ * ║              ALPHENIX — produto.js                           ║
+ * ║   Script da página de detalhes do produto (produto.html)     ║
  * ╚══════════════════════════════════════════════════════════════╝
  *
  * Lê o parâmetro ?id=N da URL, localiza o produto em PRODUCTS
@@ -32,10 +32,11 @@
   var touchStartX    = 0;
 
   /* ══════════════════════════════════════════════════════
-     VARIANT STATE (sabores / tamanhos)
+     VARIANT STATE (sabores / tamanhos / formatos)
      ══════════════════════════════════════════════════════ */
   var selectedFlavor = null;
   var selectedSize   = null;
+  var selectedFormat = null;
 
   /* ══════════════════════════════════════════════════════
      UTILITY
@@ -57,13 +58,14 @@
     return 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
   }
 
-  function getProductWaURL(p, flavor, size) {
+  function getProductWaURL(p, flavor, size, format) {
     var weight = size ? ' (' + size + ')' : (p.weight ? ' (' + p.weight + ')' : '');
+    var formatText = format ? ' [' + format + ']' : '';
     var price  = 'R$ ' + p.price.toFixed(2).replace('.', ',');
     var lines = [
       'Olá! Tenho interesse no produto:',
       '',
-      '*' + p.name + ' — ' + p.brand + weight + '*',
+      '*' + p.name + ' — ' + p.brand + weight + formatText + '*',
     ];
     if (flavor) lines.push('Sabor: *' + flavor + '*');
     lines.push('Preço: *' + price + '*', '', 'Poderia me passar mais informações? 🙏');
@@ -308,7 +310,7 @@
 
     /* Keyboard navigation */
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowLeft'  && currentImgIdx > 0)                           setMainImage(currentImgIdx - 1);
+      if (e.key === 'ArrowLeft'  && currentImgIdx > 0)                            setMainImage(currentImgIdx - 1);
       if (e.key === 'ArrowRight' && currentImgIdx < galleryImages.length - 1)    setMainImage(currentImgIdx + 1);
     });
 
@@ -373,13 +375,13 @@
 
     /* WhatsApp CTA */
     var waBtn = $('pdpWA');
-    if (waBtn) waBtn.href = getProductWaURL(product, selectedFlavor, selectedSize);
+    if (waBtn) waBtn.href = getProductWaURL(product, selectedFlavor, selectedSize, selectedFormat);
   }
 
-  /* Helper — atualiza o link do WhatsApp principal sempre que sabor/tamanho mudar */
+  /* Helper — atualiza o link do WhatsApp principal sempre que sabor/tamanho/formato mudar */
   function updateWaLink() {
     var waBtn = $('pdpWA');
-    if (waBtn) waBtn.href = getProductWaURL(product, selectedFlavor, selectedSize);
+    if (waBtn) waBtn.href = getProductWaURL(product, selectedFlavor, selectedSize, selectedFormat);
   }
 
   /* ══════════════════════════════════════════════════════
@@ -520,22 +522,24 @@
   }
 
   /* ══════════════════════════════════════════════════════
-     VARIANTS — Sabores e Tamanhos
+     VARIANTS — Sabores, Tamanhos e Formatos
      ══════════════════════════════════════════════════════ */
- function renderVariants() {
+  function renderVariants() {
     var container = $('pdpVariants');
     if (!container) return;
 
     var hasFlavors = product.flavors && product.flavors.length > 0;
     var hasSizes   = product.sizes   && product.sizes.length   > 0;
+    var hasFormats = product.formats && product.formats.length > 0;
 
-    if (!hasFlavors && !hasSizes) return;
+    if (!hasFlavors && !hasSizes && !hasFormats) return;
 
     container.style.display = '';
 
     /* Inicializa o estado com o primeiro item (Lendo o .label) */
     if (hasFlavors) selectedFlavor = product.flavors[0].label;
     if (hasSizes)   selectedSize   = product.sizes[0].label;
+    if (hasFormats) selectedFormat = product.formats[0].label;
 
     var html = '<div class="pdp-variants">';
 
@@ -564,7 +568,22 @@
         html += '<button class="pdp-variant-btn' + (idx === 0 ? ' active' : '') + '"' +
                 ' data-type="size" data-idx="' + idx + '"' +
                 ' aria-pressed="' + (idx === 0 ? 'true' : 'false') + '"' + isDisabled + '>' +
-                escapeHTML(s.label) + '</button>'; // Aqui conserta o [object Object]
+                escapeHTML(s.label) + '</button>';
+      });
+      html += '</div></div>';
+    }
+
+    /* ── Formatos (Embalagem) ───────────────────────────── */
+    if (hasFormats) {
+      html += '<div class="pdp-variant-group">';
+      html += '<p class="pdp-variant-label">Embalagem: <strong id="pdpFormatLabel">' + escapeHTML(selectedFormat) + '</strong></p>';
+      html += '<div class="pdp-variant-options" role="group" aria-label="Selecionar embalagem">';
+      product.formats.forEach(function (f, idx) {
+        var isDisabled = f.available === false ? ' disabled' : ''; // Trava o botão se não tiver estoque
+        html += '<button class="pdp-variant-btn' + (idx === 0 ? ' active' : '') + '"' +
+                ' data-type="format" data-idx="' + idx + '"' +
+                ' aria-pressed="' + (idx === 0 ? 'true' : 'false') + '"' + isDisabled + '>' +
+                escapeHTML(f.label) + '</button>';
       });
       html += '</div></div>';
     }
@@ -605,12 +624,17 @@
           setFlavorImage(flavor.image);
 
         } else if (type === 'size') {
-          selectedSize = product.sizes[idx].label; // Lendo o .label no clique também
+          selectedSize = product.sizes[idx].label;
           var sizeLbl = $('pdpSizeLabel');
           if (sizeLbl) sizeLbl.textContent = selectedSize;
+
+        } else if (type === 'format') {
+          selectedFormat = product.formats[idx].label;
+          var formatLbl = $('pdpFormatLabel');
+          if (formatLbl) formatLbl.textContent = selectedFormat;
         }
 
-        /* Atualiza link do WhatsApp com sabor/tamanho escolhidos */
+        /* Atualiza link do WhatsApp com sabor/tamanho/formato escolhidos */
         updateWaLink();
       });
     });
@@ -660,7 +684,7 @@
       '        <i class="fa-solid fa-eye" aria-hidden="true"></i>',
       '        Mais Detalhes',
       '      </a>',
-      '      <a href="' + getProductWaURL(p, null, null) + '" target="_blank" rel="noopener noreferrer"',
+      '      <a href="' + getProductWaURL(p, null, null, null) + '" target="_blank" rel="noopener noreferrer"',
       '         class="btn btn--whatsapp">',
       '        <i class="fa-brands fa-whatsapp" aria-hidden="true"></i>',
       '        Comprar pelo WhatsApp',

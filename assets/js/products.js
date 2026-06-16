@@ -44,15 +44,14 @@ var CATEGORIES = [
   { id: "proteinas",  label: "Proteínas",   icon: "fa-dumbbell"       },
   { id: "creatinas",  label: "Creatinas",   icon: "fa-flask"          },
   { id: "pre-treino", label: "Pré-Treinos", icon: "fa-bolt"           },
-  { id: "combos",     label: "Combos",      icon: "fa-box-open"       },
+  { id: "combos e outros",     label: "Combos e outros",      icon: "fa-box-open"       },
 ];
 
 // ================================================================
 //  Produtos
 // ================================================================
-var PRODUCTS = [
-
-  /* ─── PROTEÍNAS ─────────────────────────────────────────── */
+var PRODUCTS = /* ─── PROTEÍNAS ─────────────────────────────────────────── */
+[
   {
     id: 1,
     category: "proteinas",
@@ -62,23 +61,24 @@ var PRODUCTS = [
     badge: null,
     description: "Proteína concentrada com 20g de proteína por dose. Alto teor de BCAA e glutamina para máximo ganho de massa e recuperação acelerada.",
     price: 139.90,
-    image: "assets/images/products/Max/whey-dino-max-titanium.jpg",
+    image: "assets/images/products/Max/whey-dino-max-titanium-caramelo-macchiato.jpg",
     images: [
-  "assets/images/products/Max/whey-dino-max-titanium.jpg",
-  "assets/images/products/Max/whey-dino-max-titanium-2.jpg",
-  "assets/images/products/Max/whey-dino-max-titanium-3.jpg",
-  "assets/images/products/Max/whey-dino-max-titanium-4.jpg",
-  ],
-    // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Max/
-    flavors: [
-      { label: "Chocolate",      image: "assets/images/products/Max/whey-dino-max-titanium-chocolate.jpg" },
-      { label: "Baunilha",       image: "assets/images/products/Max/whey-dino-max-titanium-baunilha.jpg" },
-      { label: "Morango",        image: "assets/images/products/Max/whey-dino-max-titanium-morango.jpg" },
-      { label: "Cookies & Cream",image: "assets/images/products/Max/whey-dino-max-titanium-cookies.jpg" },
+      "assets/images/products/Max/whey-dino-max-titanium-caramelo-macchiato.jpg",
+      "assets/images/products/Max/whey-dino-max-titanium-2.jpg",
+      "assets/images/products/Max/whey-dino-max-titanium-3.jpg",
+      "assets/images/products/Max/whey-dino-max-titanium-4.jpg",
     ],
-   sizes: [
+    flavors: [
+      { label: "Caramelo Macchiato", available: true, image: "assets/images/products/Max/whey-dino-max-titanium-caramelo-macchiato.jpg" },
+      { label: "Capuccino",          available: true, image: "assets/images/products/Max/whey-dino-max-titanium-capuccino.jpg" },
+    ],
+    sizes: [
       { label: "900g",  available: true  },
       { label: "1,8kg", available: false },
+    ],
+    formats: [
+      { label: "Pote",  available: true },
+      { label: "Refil", available: true },
     ],
     brandColor: "#6b6b6b",
     brandInitials: "MT",
@@ -112,26 +112,29 @@ var PRODUCTS = [
     badge: null,
     description: "Whey protein de alta absorção com perfil completo de aminoácidos essenciais. Ideal para hipertrofia e recuperação no pós-treino.",
     price: 149.90,
-    image: "assets/images/products/Integral_medica/whey-pure-integralmedica.jpg",
+    image: "assets/images/products/Integral_medica/whey-pure-integralmedica-baunilha.jpg",
     images: [
-  "assets/images/products/Integral_medica/whey-pure-integralmedica.jpg",
-  "assets/images/products/Integral_medica/whey-pure-integralmedica-2.jpg",
-  "assets/images/products/Integral_medica/whey-pure-integralmedica-3.jpg",
-  "assets/images/products/Integral_medica/whey-pure-integralmedica-4.jpg",
-  "assets/images/products/Integral_medica/whey-pure-integralmedica-5.jpg",
-  "assets/images/products/Integral_medica/whey-pure-integralmedica-6.jpg"
-],
-    // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Integral_medica/
+      "assets/images/products/Integral_medica/whey-pure-integralmedica-baunilha.jpg",
+      "assets/images/products/Integral_medica/whey-pure-integralmedica-2.jpg",
+      "assets/images/products/Integral_medica/whey-pure-integralmedica-3.jpg",
+      "assets/images/products/Integral_medica/whey-pure-integralmedica-4.jpg",
+      "assets/images/products/Integral_medica/whey-pure-integralmedica-5.jpg",
+      "assets/images/products/Integral_medica/whey-pure-integralmedica-6.jpg"
+    ],
     flavors: [
-      { label: "Chocolate",      image: "assets/images/products/Integral_medica/whey-pure-integralmedica-chocolate.jpg" },
-      { label: "Baunilha",       image: "assets/images/products/Integral_medica/whey-pure-integralmedica-baunilha.jpg" },
-      { label: "Morango",        image: "assets/images/products/Integral_medica/whey-pure-integralmedica-morango.jpg" },
-      { label: "Cookies & Cream",image: "assets/images/products/Integral_medica/whey-pure-integralmedica-cookies.jpg" },
-      { label: "Coco",           image: "assets/images/products/Integral_medica/whey-pure-integralmedica-coco.jpg" },
+      { label: "Chocolate",       available: true, image: "assets/images/products/Integral_medica/whey-pure-integralmedica-chocolate.jpg" },
+      { label: "Baunilha",        available: true, image: "assets/images/products/Integral_medica/whey-pure-integralmedica-baunilha.jpg" },
+      { label: "Morango",         available: true, image: "assets/images/products/Integral_medica/whey-pure-integralmedica-morango.jpg" },
+      { label: "Cookies & Cream", available: true, image: "assets/images/products/Integral_medica/whey-pure-integralmedica-cookies.jpg" },
+      { label: "Gelato Di Latte", available: true, image: "assets/images/products/Integral_medica/whey-pure-integralmedica-Gelato-Di-Latte.jpg" },
     ],
     sizes: [
       { label: "900g",  available: true  },
       { label: "1,8kg", available: false },
+    ],
+    formats: [
+      { label: "Pote",  available: true },
+      { label: "Refil", available: true },
     ],
     brandColor: "#cc1100",
     brandInitials: "IM",
@@ -165,23 +168,36 @@ var PRODUCTS = [
     badge: null,
     description: "Fórmula concentrada com alto teor proteico e baixo teor de gordura. Resultados visíveis para quem treina com seriedade.",
     price: 149.90,
-    image: "assets/images/products/Probiotica/whey-pure-probiotica.jpg",
+    image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg",
     images: [
-  "assets/images/products/Probiotica/whey-pure-probiotica.jpg",
-  "assets/images/products/Probiotica/whey-pure-probiotica-2.jpg",
-  "assets/images/products/Probiotica/whey-pure-probiotica-3.jpg",
-  "assets/images/products/Probiotica/whey-pure-probiotica-4.jpg",
-  ],
-    // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Probiotica/
+      "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg",
+      "assets/images/products/Probiotica/whey-pure-probiotica-2.jpg",
+      "assets/images/products/Probiotica/whey-pure-probiotica-3.jpg",
+      "assets/images/products/Probiotica/whey-pure-probiotica-4.jpg",
+      "assets/images/products/Probiotica/whey-pure-probiotica-5.jpg",
+    ],
     flavors: [
-      { label: "Chocolate",      image: "assets/images/products/Probiotica/whey-pure-probiotica-chocolate.jpg" },
-      { label: "Baunilha",       image: "assets/images/products/Probiotica/whey-pure-probiotica-baunilha.jpg" },
-      { label: "Morango",        image: "assets/images/products/Probiotica/whey-pure-probiotica-morango.jpg" },
-      { label: "Cookies & Cream",image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
+      { label: "Chocolate",           available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-chocolate.jpg" },
+      { label: "Chocolate branco",    available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-chocolate.jpg" },
+      { label: "Baunilha",            available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-baunilha.jpg" },
+      { label: "Morango",             available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-morango.jpg" },
+      { label: "Cookies & Cream",     available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
+      { label: "Caramelo Salgado",    available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-chocolate.jpg" },
+      { label: "Capuccino",           available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-baunilha.jpg" },
+      { label: "Doce de Leite",       available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-morango.jpg" },
+      { label: "Chocolate com Avelã", available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
+      { label: "Leite",               available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
+      { label: "Iogurte com Morango", available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
+      { label: "Iogurte com limão",   available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
+      { label: "Iogurte com coco",    available: true, image: "assets/images/products/Probiotica/whey-pure-probiotica-cookies.jpg" },
     ],
     sizes: [
       { label: "900g",  available: true  },
       { label: "1,8kg", available: false },
+    ],
+    formats: [
+      { label: "Pote",  available: true },
+      { label: "Refil", available: true },
     ],
     brandColor: "#1a3a8f",
     brandInitials: "PB",
@@ -215,24 +231,30 @@ var PRODUCTS = [
     badge: "🔥 Favorito",
     description: "O whey mais gostoso do mercado! Sabor paçoca exclusivo com 26g de proteína por dose. Qualidade premium Dark Wolf.",
     price: 159.90,
-    image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf.jpg",
+    image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-pacoca.jpg",
     images: [
-  "assets/images/products/Dark_Wolf/whey-pure-dark-wolf.jpg",
-  "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-2.jpg",
-  "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-3.jpg"
-],
-    // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Dark_Wolf/
+      "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-pacoca.jpg",
+      "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-2.jpg",
+      "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-3.jpg"
+    ],
     flavors: [
-      { label: "Paçoca",     image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-pacoca.jpg" },
-      { label: "Chocolate",  image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-chocolate.jpg" },
-      { label: "Baunilha",   image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-baunilha.jpg" },
-      { label: "Morango",    image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-morango.jpg" },
+      { label: "Paçoca",           available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-pacoca.jpg" },
+      { label: "Chocolate",        available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-chocolate.jpg" },
+      { label: "Baunilha",         available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-baunilha.jpg" },
+      { label: "Morango",          available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-morango.jpg" },
+      { label: "Leitinho",         available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-baunilha.jpg" },
+      { label: "cookies",          available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-morango.jpg" },
+      { label: "Doce de Leite",    available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-morango.jpg" },
+      { label: "Chocolate branco", available: true, image: "assets/images/products/Dark_Wolf/whey-pure-dark-wolf-morango.jpg" },
     ],
     sizes: [
       { label: "900g",  available: true  },
       { label: "1,8kg", available: false },
     ],
-
+    formats: [
+      { label: "Pote",  available: true },
+      { label: "Refil", available: true },
+    ],
     brandColor: "#e65c00",
     brandInitials: "DW",
     benefits: [
@@ -266,25 +288,33 @@ var PRODUCTS = [
     description: "Linha premium DUX com formulação avançada, alto teor proteico e sabor incomparável. Para quem não abre mão de qualidade.",
     price: 219.90,
     image: "assets/images/products/Dux/whey-concentrado-dux.jpg",
-     images: [
-  "assets/images/products/Dux/whey-concentrado-dux.jpg",
-  "assets/images/products/Dux/whey-concentrado-dux-2.jpg",
-  "assets/images/products/Dux/whey-concentrado-dux-3.jpg",
-  "assets/images/products/Dux/whey-concentrado-dux-4.jpg",
-  "assets/images/products/Dux/whey-concentrado-dux-5.jpg",
-  "assets/images/products/Dux/whey-concentrado-dux-6.jpg"
-],
-    // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Dux/
+    images: [
+      "assets/images/products/Dux/whey-concentrado-dux-cookies.jpg",
+      "assets/images/products/Dux/whey-concentrado-dux-2.jpg",
+      "assets/images/products/Dux/whey-concentrado-dux-3.jpg",
+      "assets/images/products/Dux/whey-concentrado-dux-4.jpg",
+      "assets/images/products/Dux/whey-concentrado-dux-5.jpg",
+      "assets/images/products/Dux/whey-concentrado-dux-6.jpg"
+    ],
     flavors: [
-      { label: "Chocolate",    image: "assets/images/products/Dux/whey-concentrado-dux-chocolate.jpg" },
-      { label: "Baunilha",     image: "assets/images/products/Dux/whey-concentrado-dux-baunilha.jpg" },
-      { label: "Morango",      image: "assets/images/products/Dux/whey-concentrado-dux-morango.jpg" },
-      { label: "Cookies & Cream", image: "assets/images/products/Dux/whey-concentrado-dux-cookies.jpg" },
-      { label: "Doce de Leite",image: "assets/images/products/Dux/whey-concentrado-dux-doce-de-leite.jpg" },
+      { label: "Chocolate Branco", available: true, image: "assets/images/products/Dux/whey-concentrado-dux-chocolate.jpg" },
+      { label: "Chocolate",        available: true, image: "assets/images/products/Dux/whey-concentrado-dux-chocolate.jpg" },
+      { label: "Baunilha",         available: true, image: "assets/images/products/Dux/whey-concentrado-dux-baunilha.jpg" },
+      { label: "Morango",          available: true, image: "assets/images/products/Dux/whey-concentrado-dux-morango.jpg" },
+      { label: "Butter cookies",   available: true, image: "assets/images/products/Dux/whey-concentrado-dux-cookies.jpg" },
+      { label: "Torta de Limão",   available: true, image: "assets/images/products/Dux/whey-concentrado-dux-doce-de-leite.jpg" },
+      { label: "Caramelo Salgado", available: true, image: "assets/images/products/Dux/whey-concentrado-dux-doce-de-leite.jpg" },
+      { label: "Coco",             available: true, image: "assets/images/products/Dux/whey-concentrado-dux-doce-de-leite.jpg" },
+      { label: "Neutro",           available: true, image: "assets/images/products/Dux/whey-concentrado-dux-doce-de-leite.jpg" },
+      { label: "Capuccino",        available: true, image: "assets/images/products/Dux/whey-concentrado-dux-doce-de-leite.jpg" },
     ],
     sizes: [
       { label: "900g",  available: true  },
       { label: "1,8kg", available: false },
+    ],
+    formats: [
+      { label: "Pote",  available: true },
+      { label: "Refil", available: true },
     ],
     brandColor: "#8b0000",
     brandInitials: "DX",
@@ -296,7 +326,7 @@ var PRODUCTS = [
       "Livre de glúten e corantes artificiais"
     ],
     howToUse: [
-      "Dissolva 1 dose (30g) em 250ml de água ou leite desnatado.",
+      "Dissolva 1 dose (30g) em 250ml de água or leite desnatado.",
       "Misture bem em coqueteleira ou liquidificador por 20 segundos.",
       "Consuma após o treino ou antes de dormir para recuperação noturna."
     ],
@@ -314,7 +344,7 @@ var PRODUCTS = [
   {
     id: 6,
     category: "creatinas",
-    name: "Creatina Universal",
+    name: "Creatina Universal Monohidratada",
     brand: "Universal Nutrition",
     weight: "200g",
     badge: "✅ C/ Selo",
@@ -329,6 +359,7 @@ var PRODUCTS = [
 ],
     sizes: [
       { label: "200g",  available: true  },
+      { label: "300g",  available: false },
       { label: "400g", available: false },
     ],
     brandColor: "#b8860b",
@@ -355,6 +386,7 @@ var PRODUCTS = [
       creatina: "3g"
     }
   },
+  /* ─── CREATINAS ─────────────────────────────────────────── */
   {
     id: 7,
     category: "creatinas",
@@ -366,15 +398,17 @@ var PRODUCTS = [
     price: 59.90,
     image: "assets/images/products/Integral_medica/creatina-integralmedica.jpg",
     images: [
-  "assets/images/products/Integral_medica/creatina-integralmedica.jpg",
-  "assets/images/products/Integral_medica/creatina-integralmedica-2.jpg",
-  "assets/images/products/Integral_medica/creatina-integralmedica-3.jpg",
-  "assets/images/products/Integral_medica/creatina-integralmedica-4.jpg",
-  "assets/images/products/Integral_medica/creatina-integralmedica-5.jpg"
-],
+      "assets/images/products/Integral_medica/creatina-integralmedica.jpg",
+      "assets/images/products/Integral_medica/creatina-integralmedica-2.jpg",
+      "assets/images/products/Integral_medica/creatina-integralmedica-3.jpg",
+      "assets/images/products/Integral_medica/creatina-integralmedica-4.jpg",
+      "assets/images/products/Integral_medica/creatina-integralmedica-5.jpg"
+    ],
+    // ── Tamanhos: imagem dedicada para cada tamanho de creatina
     sizes: [
-      { label: "300g",  available: true  },
-      { label: "600g", available: false },
+      { label: "150g", available: false, image: "assets/images/products/Integral_medica/creatina-integralmedica-150g.jpg" },
+      { label: "300g", available: true,  image: "assets/images/products/Integral_medica/creatina-integralmedica-300g.jpg" },
+      { label: "500g", available: false, image: "assets/images/products/Integral_medica/creatina-integralmedica-500g.jpg" },
     ],
     brandColor: "#cc1100",
     brandInitials: "IM",
@@ -411,14 +445,16 @@ var PRODUCTS = [
     price: 59.90,
     image: "assets/images/products/Max/creatina-max-titanium.jpg",
     images: [
-  "assets/images/products/Max/creatina-max-titanium.jpg",
-  "assets/images/products/Max/creatina-max-titanium-2.jpg",
-  "assets/images/products/Max/creatina-max-titanium-3.jpg",
-  "assets/images/products/Max/creatina-max-titanium-4.jpg",
-  ],
+      "assets/images/products/Max/creatina-max-titanium.jpg",
+      "assets/images/products/Max/creatina-max-titanium-2.jpg",
+      "assets/images/products/Max/creatina-max-titanium-3.jpg",
+      "assets/images/products/Max/creatina-max-titanium-4.jpg",
+    ],
+    // ── Tamanhos: imagem dedicada para cada tamanho de creatina
     sizes: [
-      { label: "300g",  available: true  },
-      { label: "600g", available: false },
+      { label: "150g", available: false, image: "assets/images/products/Max/creatina-max-titanium-150g.jpg" },
+      { label: "300g", available: true,  image: "assets/images/products/Max/creatina-max-titanium-300g.jpg" },
+      { label: "500g", available: false, image: "assets/images/products/Max/creatina-max-titanium-500g.jpg" },
     ],
     brandColor: "#6b6b6b",
     brandInitials: "MT",
@@ -454,10 +490,17 @@ var PRODUCTS = [
     description: "O maior custo-benefício do mercado! 500g de creatina pura com laudo de qualidade certificado. Estoque limitado — garanta o seu.",
     price: 89.90,
     image: "assets/images/products/Dark_Wolf/creatina-dark-wolf.jpg",
+    // ── Tamanhos: imagem dedicada para cada tamanho de creatina
     sizes: [
-      { label: "300g",  available: true  },
-      { label: "500g", available: false },
+      { label: "300g", available: false, image: "assets/images/products/Dark_Wolf/creatina-dark-wolf-300g.jpg" },
+      { label: "500g", available: true,  image: "assets/images/products/Dark_Wolf/creatina-dark-wolf-500g.jpg" },
     ],
+
+    formats: [
+      { label: "Pote",  available: true },
+      { label: "Refil", available: true },
+    ],
+    
     brandColor: "#e65c00",
     brandInitials: "DW",
     benefits: [
@@ -495,20 +538,22 @@ var PRODUCTS = [
     price: 49.90,
     image: "assets/images/products/Max/pre-treino-horus.jpg",
     images: [
-  "assets/images/products/Max/pre-treino-horus.jpg",
-  "assets/images/products/Max/pre-treino-horus-2.jpg",
-  "assets/images/products/Max/pre-treino-horus-3.jpg",
-  "assets/images/products/Max/pre-treino-horus-4.jpg",
-  ],
+      "assets/images/products/Max/pre-treino-horus.jpg",
+      "assets/images/products/Max/pre-treino-horus-2.jpg",
+      "assets/images/products/Max/pre-treino-horus-3.jpg",
+      "assets/images/products/Max/pre-treino-horus-4.jpg",
+    ],
     // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Max/
     flavors: [
-      { label: "Frutas Vermelhas", image: "assets/images/products/Max/pre-treino-horus-frutas-vermelhas.jpg" },
-      { label: "Limão",            image: "assets/images/products/Max/pre-treino-horus-limao.jpg" },
-      { label: "Maracujá",         image: "assets/images/products/Max/pre-treino-horus-maracuja.jpg" },
-      { label: "Melancia",         image: "assets/images/products/Max/pre-treino-horus-melancia.jpg" },
+      { label: "Frutas Vermelhas", available: true, image: "assets/images/products/Max/pre-treino-horus-frutas-vermelhas.jpg" },
+      { label: "Amora",            available: true, image: "assets/images/products/Max/pre-treino-horus-amora.jpg" },
+      { label: "Citrus",           available: true, image: "assets/images/products/Max/pre-treino-horus-citrus.jpg" },
+      { label: "Maçã verde",       available: true, image: "assets/images/products/Max/pre-treino-horus-maca-verde.jpg" },
+      { label: "Limão Yuzu",       available: true, image: "assets/images/products/Max/pre-treino-horus-limao-yuzu.jpg" },
+      { label: "Blue Ice",         available: true, image: "assets/images/products/Max/pre-treino-horus-blue-ice.jpg" },
     ],
     sizes: [
-      { label: "150g",  available: true  },
+      { label: "150g", available: true  },
       { label: "300g", available: false },
     ],
     brandColor: "#6b6b6b",
@@ -548,20 +593,19 @@ var PRODUCTS = [
     price: 109.90,
     image: "assets/images/products/Dark_Wolf/pre-treino-alcateia.jpg",
     images: [
-  "assets/images/products/Dark_Wolf/pre-treino-alcateia.jpg",
-  "assets/images/products/Dark_Wolf/pre-treino-alcateia-2.jpg",
-  "assets/images/products/Dark_Wolf/pre-treino-alcateia-3.jpg",
-  "assets/images/products/Dark_Wolf/pre-treino-alcateia-4.jpg",
-],
+      "assets/images/products/Dark_Wolf/pre-treino-alcateia.jpg",
+      "assets/images/products/Dark_Wolf/pre-treino-alcateia-2.jpg",
+      "assets/images/products/Dark_Wolf/pre-treino-alcateia-3.jpg",
+      "assets/images/products/Dark_Wolf/pre-treino-alcateia-4.jpg",
+    ],
     // ── Sabores: adicione a imagem de cada sabor em assets/images/products/Dark_Wolf/
     flavors: [
-      { label: "Frutas Vermelhas", image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-frutas-vermelhas.jpg" },
-      { label: "Limão",            image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-limao.jpg" },
-      { label: "Maracujá",         image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-maracuja.jpg" },
-      { label: "Uva",              image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-uva.jpg" },
+      { label: "Cola",             available: true, image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-cola.jpg" },
+      { label: "Energético",       available: true, image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-energetico.jpg" },
+      { label: "Açaí com guaraná", available: true, image: "assets/images/products/Dark_Wolf/pre-treino-alcateia-acai-guarana.jpg" },
     ],
     sizes: [
-      { label: "900g",  available: true  },
+      { label: "300g", available: true },
     ],
     brandColor: "#e65c00",
     brandInitials: "DW",
