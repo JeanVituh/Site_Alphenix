@@ -2,7 +2,9 @@
  * ALPHENIX — Base Styles
  * Reset, tipografia e utilitários globais.
  */
-
+#inicio, #produtos, #sobre, #contato {
+  scroll-margin-top: var(--header-h);
+}
 /* ── Reset ───────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;

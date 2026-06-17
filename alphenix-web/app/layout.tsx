@@ -1,13 +1,14 @@
 // ================================================================
-//  ALPHENIX — app/layout.tsx (Versão Corrigida)
+//  ALPHENIX — app/layout.tsx (com Header, Footer e Loader globais)
 // ================================================================
 
 import type { Metadata } from 'next';
 import { RevealAnimations } from '@/components/RevealAnimations';
+import { Loader } from '@/components/Loader';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 
 // ─── IMPORTAÇÃO CORRETA DOS ARQUIVOS CSS ───
-// Mudamos de tags <link> para imports normais. A ordem original foi mantida!
-// Nota: Se o seu projeto usar a pasta 'src', mude o início do caminho para '../../public'
 import '@/public/assets/css/variables.css';
 import '@/public/assets/css/base.css';
 import '@/public/assets/css/animations.css';
@@ -30,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        {/* Fontes Externas (Podem continuar aqui sem problemas) */}
+        {/* Fontes Externas */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -44,13 +45,29 @@ export default function RootLayout({
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
         />
       </head>
-      <body className="loaded">
+      <body>
+        {/*
+          Loader: mostra a tela de carregamento e, ao final,
+          adiciona a classe `loaded` ao <body> — é o que libera
+          a visibilidade do <main> e do <header> (regra em
+          components.css). Precisa vir ANTES de Header/children.
+        */}
+        <Loader />
+
+        {/* Header global: aparece em todas as páginas */}
+        <Header />
+
         {children}
 
+        {/* Footer global: aparece em todas as páginas */}
+        <Footer />
+
         {/*
-          RevealAnimations: ativa .reveal → .visible via IntersectionObserver.
-          Deve ficar DEPOIS de {children} para que o DOM já exista quando
-          o useEffect rodar.
+          RevealAnimations: ativa .reveal → .visible via IntersectionObserver
+          para as seções estáticas (hero, features, cta-banner etc).
+          A grade de produtos da home tem seu próprio observer interno
+          (ver components/HomeProducts.tsx), pois os cards mudam
+          dinamicamente com busca/filtro.
         */}
         <RevealAnimations />
       </body>

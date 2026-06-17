@@ -998,12 +998,11 @@
 
 /* ── Layout principal da página ────────────────────────────── */
 .pdp-page {
-  padding-top: var(--sp-12);   /* 40px — sem header fixo, remove o offset */
+  padding-top: calc(var(--header-h) + var(--sp-8));
   padding-bottom: var(--sp-24);
   min-height: 100vh;
   background: var(--clr-bg);
 }
-
 /* ATENÇÃO: Se você não tem um <Header> no layout.tsx,
    reduza o padding-top: apenas var(--sp-12) */
 

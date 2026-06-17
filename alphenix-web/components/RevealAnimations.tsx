@@ -2,41 +2,55 @@
 // ================================================================
 //  ALPHENIX — RevealAnimations (components/RevealAnimations.tsx)
 //
-//  Client Component que ativa a animação `.reveal → .visible`
-//  via IntersectionObserver, replicando o comportamento que
-//  existia no HTML original (script inline).
+//  CORREÇÃO: antes o observer era criado uma única vez no mount e
+//  desconectado após animar cada elemento. Com a navegação
+//  client-side do Next.js, ao voltar para a home os elementos
+//  .reveal são recriados sem a classe .visible — e o observer
+//  já estava morto, deixando tudo invisível (tela preta).
 //
-//  Adicione <RevealAnimations /> no final do <body> em layout.tsx.
+//  Solução: dependência em `pathname` → o useEffect re-executa a
+//  cada troca de rota, criando um novo observer para observar os
+//  elementos .reveal:not(.visible) que ainda precisam animar.
 // ================================================================
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export function RevealAnimations() {
+  const pathname = usePathname();
+
   useEffect(() => {
-    const els = Array.from(
-      document.querySelectorAll<HTMLElement>('.reveal')
-    );
-    if (!els.length) return;
+    let observer: IntersectionObserver | null = null;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            // Unobserve após animar — não precisa mais observar
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0 } // 8% visível já dispara a animação
-    );
+    // Pequeno delay garante que o DOM já foi atualizado pelo React
+    // após a navegação antes de querySelectorAll
+    const timer = setTimeout(() => {
+      const els = Array.from(
+        document.querySelectorAll<HTMLElement>('.reveal:not(.visible)')
+      );
+      if (!els.length) return;
 
-    els.forEach((el) => observer.observe(el));
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              observer?.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.08, rootMargin: '0px 0px -32px 0px' }
+      );
 
-    // Cleanup: desconecta quando o componente desmonta
-    return () => observer.disconnect();
-  }, []);
+      els.forEach((el) => observer!.observe(el));
+    }, 100);
 
-  // Não renderiza nada — só gerencia o DOM
+    // Cleanup: cancela o timer e desconecta o observer ao trocar de rota
+    return () => {
+      clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [pathname]); // ← Re-executa sempre que a rota mudar
+
   return null;
 }
