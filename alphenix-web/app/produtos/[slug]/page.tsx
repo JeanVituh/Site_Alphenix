@@ -1,23 +1,28 @@
 // ================================================================
 //  ALPHENIX — Página de Produto (app/produtos/[slug]/page.tsx)
 //
-//  Alterações em relação à versão anterior:
-//  1. <div className="pdp-col-info"> — removida a classe `reveal`.
-//     Motivo: pdp-col-info é o pai de TUDO na coluna direita.
-//     Com `reveal` (opacity:0) no pai, mesmo que os filhos
-//     recebessem `visible`, continuariam invisíveis.
-//     A coluna principal deve ser sempre visível; só as seções
-//     internas (benefits, how-to-use) têm scroll-reveal individual.
+//  Corrigido para usar as classes exatas do produto.css:
+//   • Breadcrumb com caminho real (Início > Produtos > Categoria > Nome)
+//   • ProductHero (Client Component) — galeria interativa + info
+//   • ProductDetailNav (Client Component) — nav sticky com destaque
+//   • Seções: Benefícios (grid), Modo de Uso (steps), Tabela Nutricional
 //
-//  Server Component: fetch no servidor, zero JS extra pro cliente.
-//  O VariantSelector é o único Client Component nessa página.
+//  Server Component: dados buscados no servidor, zero JS extra
+//  além dos dois Client Components importados.
 // ================================================================
 
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+
 import { getProductBySlug, getAllProductSlugs } from '@/lib/queries/products';
+import { CATEGORIES } from '@/lib/categories';
 import type { NutritionFacts } from '@/lib/types';
-import { VariantSelector } from '@/components/VariantSelector';
+
+import { ProductHero }      from '@/components/ProductHero';
+import { ProductDetailNav } from '@/components/ProductDetailNav';
+import type { NavItem }     from '@/components/ProductDetailNav';
+
 
 // ── Rotas estáticas no build ─────────────────────────────────────
 export async function generateStaticParams() {
@@ -30,19 +35,20 @@ export async function generateStaticParams() {
   }
 }
 
+
 // ── Metadata dinâmica por produto ────────────────────────────────
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product  = await getProductBySlug(slug);
 
   if (!product) {
     return { title: 'Produto não encontrado | Alphenix' };
   }
 
   return {
-    title: `${product.name} — ${product.brand} | Alphenix`,
+    title:       `${product.name} — ${product.brand} | Alphenix`,
     description: product.description ?? undefined,
     openGraph: {
       title:       `${product.name} — ${product.brand}`,
@@ -53,75 +59,76 @@ export async function generateMetadata(
 }
 
 
-// ── Helper: garante que paths de assets comecem com / ───────────────
-function assetUrl(path: string): string {
-  if (!path) return path;
-  // URLs do Supabase Storage (https://...) ou caminhos já absolutos
-  if (path.startsWith('http') || path.startsWith('/')) return path;
-  return '/' + path;
-}
+// ════════════════════════════════════════════════════════════════
+//  SUB-COMPONENTES (Server, renderizados estaticamente)
+// ════════════════════════════════════════════════════════════════
 
-// ── Componente de Preço (renderizado no servidor) ─────────────────
-function PriceDisplay({ basePrice }: { basePrice: number }) {
+// ── Seção: Benefícios ─────────────────────────────────────────
+function BenefitsSection({ benefits }: { benefits: string[] }) {
+  if (!benefits.length) return null;
   return (
-    <div className="pdp-price-wrapper">
-      <span className="pdp-price">
-        R$ {basePrice.toFixed(2).replace('.', ',')}
-      </span>
-      <span className="pdp-price-note">Preço pode variar por tamanho</span>
-    </div>
-  );
-}
+    <section
+      id="beneficios"
+      className="pdp-section reveal"
+      // scroll-margin compensa header fixo + nav sticky (~56 px)
+      style={{ scrollMarginTop: 'calc(var(--header-h) + 56px)' }}
+    >
+      <h2 className="pdp-section__title">
+        <i className="fa-solid fa-fire-flame-curved" aria-hidden="true" />
+        BENEFÍCIOS
+      </h2>
 
-// ── Galeria de Imagens ────────────────────────────────────────────
-function ProductGallery({ images, name }: { images: string[]; name: string }) {
-  const mainImage = images[0];
-  if (!mainImage) {
-    return (
-      <div className="pdp-gallery-placeholder" aria-label={`Imagem de ${name}`}>
-        <span>Sem imagem</span>
+      <div className="pdp-benefits-grid">
+        {benefits.map((b, i) => (
+          <div key={i} className="pdp-benefit-item">
+            <div className="pdp-benefit-item__icon" aria-hidden="true">
+              <i className="fa-solid fa-check" />
+            </div>
+            <span>{b}</span>
+          </div>
+        ))}
       </div>
-    );
-  }
-  return (
-    <div className="pdp-gallery">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={assetUrl(mainImage)}
-        alt={name}
-        className="pdp-gallery__main"
-        width={600}
-        height={600}
-      />
-      {images.length > 1 && (
-        <div className="pdp-gallery__thumbs">
-          {images.map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={assetUrl(src)}
-              alt={`${name} — imagem ${i + 1}`}
-              className="pdp-gallery__thumb"
-              width={80}
-              height={80}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 
-// ── Tabela Nutricional ────────────────────────────────────────────
-function NutritionTable({ nutrition }: { nutrition: NutritionFacts | null }) {
-  if (!nutrition) return null;
 
+// ── Seção: Modo de Uso ────────────────────────────────────────
+function HowToUseSection({ steps }: { steps: string[] }) {
+  if (!steps.length) return null;
+  return (
+    <section
+      id="modo-de-uso"
+      className="pdp-section reveal"
+      style={{ scrollMarginTop: 'calc(var(--header-h) + 56px)' }}
+    >
+      <h2 className="pdp-section__title">
+        <i className="fa-solid fa-circle-info" aria-hidden="true" />
+        MODO DE USO
+      </h2>
+
+      <ol className="pdp-steps">
+        {steps.map((step, i) => (
+          <li key={i} className="pdp-step">
+            <span className="pdp-step__num" aria-hidden="true">{i + 1}</span>
+            <p className="pdp-step__text">{step}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+
+// ── Seção: Tabela Nutricional ─────────────────────────────────
+function NutritionSection({ nutrition }: { nutrition: NutritionFacts }) {
+  // Mapeamento de chaves → rótulos PT-BR
   const labels: Record<string, string> = {
     porcao:       'Porção',
     calorias:     'Calorias',
     proteinas:    'Proteínas',
-    carboidratos: 'Carboidratos',
-    gorduras:     'Gorduras',
+    carboidratos: 'Carboidratos Totais',
+    gorduras:     'Gorduras Totais',
     sodio:        'Sódio',
     creatina:     'Creatina',
     cafeina:      'Cafeína',
@@ -131,121 +138,144 @@ function NutritionTable({ nutrition }: { nutrition: NutritionFacts | null }) {
     arginina:     'Arginina',
   };
 
+  const { porcao, calorias, ...rest } = nutrition;
+
+  const otherEntries = (Object.entries(rest) as [string, string | undefined][])
+    .filter((entry): entry is [string, string] => Boolean(entry[1]));
+
   return (
-    <section className="pdp-nutrition reveal">
-      <h3 className="pdp-section-title">Informações Nutricionais</h3>
-      <table className="pdp-nutrition__table">
-        <tbody>
-          {(Object.entries(nutrition) as [string, string | undefined][])
-            .filter((entry): entry is [string, string] => entry[1] !== undefined)
-            .map(([key, value]) => (
-              <tr key={key} className="pdp-nutrition__row">
-                <td className="pdp-nutrition__label">{labels[key] ?? key}</td>
-                <td className="pdp-nutrition__value">{value}</td>
+    <section
+      id="tabela-nutricional"
+      className="pdp-section reveal"
+      style={{ scrollMarginTop: 'calc(var(--header-h) + 56px)' }}
+    >
+      <h2 className="pdp-section__title">
+        <i className="fa-solid fa-table-list" aria-hidden="true" />
+        TABELA NUTRICIONAL
+      </h2>
+
+      <div className="pdp-nutrition-wrap">
+        <div className="nutrition-card">
+
+          {/* Cabeçalho do card */}
+          <div className="nutrition-card__header">
+            <p className="nutrition-card__title">INFORMAÇÃO NUTRICIONAL</p>
+            {porcao && (
+              <p className="nutrition-card__serving">Porção: {porcao}</p>
+            )}
+          </div>
+
+          <table className="nutrition-table">
+            <thead>
+              <tr>
+                <th colSpan={2} style={{ paddingBlock: '10px' }}>
+                  QUANTIDADE POR PORÇÃO
+                </th>
               </tr>
-            ))}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {/* Linha de calorias com destaque especial */}
+              {calorias && (
+                <tr className="nt-row--calories">
+                  <td>Calorias</td>
+                  <td>{calorias}</td>
+                </tr>
+              )}
+
+              {/* Demais nutrientes */}
+              {otherEntries.map(([key, value]) => (
+                <tr key={key}>
+                  <td>{labels[key] ?? key}</td>
+                  <td>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p className="nutrition-card__disclaimer">
+            * % VD com base em uma dieta de 2.000 kcal. Seus valores diários
+            podem ser maiores ou menores dependendo de suas necessidades calóricas.
+          </p>
+        </div>
+      </div>
     </section>
   );
 }
 
-// ── Página Principal (Server Component) ──────────────────────────
+
+// ════════════════════════════════════════════════════════════════
+//  PÁGINA PRINCIPAL (Server Component)
+// ════════════════════════════════════════════════════════════════
 export default async function ProductPage(
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params;
-
-  const product = await getProductBySlug(slug);
+  const { slug }  = await params;
+  const product   = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const hasVariants = product.option_types.length > 0;
+  // Rótulo legível da categoria para o breadcrumb
+  const categoryObj   = CATEGORIES.find(c => c.id === product.category);
+  const categoryLabel = categoryObj?.label ?? product.category;
+
+  // Itens da nav de seções — só adiciona se o conteúdo existir
+  const navItems: NavItem[] = [
+    ...(product.benefits.length > 0
+      ? [{ id: 'beneficios', label: 'Benefícios' }]
+      : []),
+    ...(product.how_to_use.length > 0
+      ? [{ id: 'modo-de-uso', label: 'Modo de Uso' }]
+      : []),
+    ...(product.nutrition
+      ? [{ id: 'tabela-nutricional', label: 'Tabela Nutricional' }]
+      : []),
+  ];
+
+  const hasDetails =
+    product.benefits.length > 0 ||
+    product.how_to_use.length > 0 ||
+    Boolean(product.nutrition);
 
   return (
-    <main className="pdp-page">
-      <div className="container">
-        <div className="pdp-layout">
+    <main>
 
-          {/* ── Coluna esquerda: galeria ── */}
-          <div className="pdp-col-media">
-            <ProductGallery images={product.images} name={product.name} />
-          </div>
+      {/* ── Breadcrumb ── */}
+      <div className="pdp-breadcrumb">
+        <div className="container pdp-breadcrumb__inner">
+          <Link href="/">Início</Link>
+          <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+          <Link href="/#produtos">Produtos</Link>
+          <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+          <Link href={`/?categoria=${encodeURIComponent(product.category)}#produtos`}>
+            {categoryLabel}
+          </Link>
+          <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+          <span className="pdp-breadcrumb__current">{product.name}</span>
+        </div>
+      </div>
 
-          {/* ── Coluna direita: info + variações ──
-              ⚠️ REMOVIDA a classe `reveal` deste div.
-              Motivo: este é o PAI de todo o conteúdo visível.
-              Com reveal (opacity:0) no pai, os filhos ficavam
-              invisíveis mesmo depois de receber .visible.
-              As seções internas (benefits, how-to-use) têm
-              seu próprio reveal para animar individualmente.
-          ── */}
-          <div className="pdp-col-info">
+      {/* ── Hero: Galeria + Info (Client Component) ── */}
+      <ProductHero product={product} />
 
-            {/* Badge e eyebrow */}
-            {product.badge && (
-              <span className="badge badge--fire">{product.badge}</span>
-            )}
-            <p className="pdp-brand">{product.brand}</p>
-            <h1 className="pdp-title">{product.name}</h1>
-            <p className="pdp-description">{product.description}</p>
+      {/* ── Nav sticky de seções (Client Component, só monta se houver itens) ── */}
+      {navItems.length > 0 && (
+        <ProductDetailNav items={navItems} />
+      )}
 
-            {/* Preço base (server-rendered) */}
-            <PriceDisplay basePrice={product.base_price} />
+      {/* ── Seções de detalhe ── */}
+      {hasDetails && (
+        <div className="pdp-details">
+          <div className="container">
 
-            {/* ⭐ Seletor de variações — Client Component */}
-            {hasVariants ? (
-              <VariantSelector
-                product={product}
-                whatsappNumber="5538998926729"
-              />
-            ) : (
-              /* Produto sem variações: botão direto */
-              <a
-                href={`https://wa.me/5538998926729?text=${encodeURIComponent(
-                  `Olá! Tenho interesse no produto:\n\n*${product.name} — ${product.brand}*\nPreço: *R$ ${product.base_price.toFixed(2).replace('.', ',')}*\n\nPoderia me passar mais informações? 🙏`
-                )}`}
-                className="btn btn--whatsapp"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                💬 Pedir pelo WhatsApp
-              </a>
+            <BenefitsSection  benefits={product.benefits}  />
+            <HowToUseSection  steps={product.how_to_use}   />
+            {product.nutrition && (
+              <NutritionSection nutrition={product.nutrition} />
             )}
 
-            {/* Benefícios — mantém `reveal` para animar ao entrar na tela */}
-            {product.benefits.length > 0 && (
-              <section className="pdp-benefits reveal reveal-delay-1">
-                <h3 className="pdp-section-title">Benefícios</h3>
-                <ul className="pdp-benefits__list">
-                  {product.benefits.map((b, i) => (
-                    <li key={i} className="pdp-benefits__item">
-                      <span aria-hidden>🔥</span> {b}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Modo de uso — mantém `reveal` para animar ao entrar na tela */}
-            {product.how_to_use.length > 0 && (
-              <section className="pdp-how-to-use reveal reveal-delay-2">
-                <h3 className="pdp-section-title">Como usar</h3>
-                <ol className="pdp-steps">
-                  {product.how_to_use.map((step, i) => (
-                    <li key={i} className="pdp-step">
-                      <span className="pdp-step__num">{i + 1}</span>
-                      <p>{step}</p>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            )}
           </div>
         </div>
+      )}
 
-        {/* Tabela nutricional (largura total) — mantém `reveal` */}
-        <NutritionTable nutrition={product.nutrition} />
-      </div>
     </main>
   );
 }
