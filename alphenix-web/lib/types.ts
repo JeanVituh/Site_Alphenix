@@ -102,6 +102,7 @@ export interface ProductWithVariants extends Product {
 export interface ProductCard extends Product {
   min_price: number;
   has_variants: boolean;
+  cover_image_url: string | null;
 }
 
 // ── Seleção do usuário no VariantSelector ─────────────────────────

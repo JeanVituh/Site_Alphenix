@@ -2,19 +2,16 @@
 // ================================================================
 //  ALPHENIX — ProductHero (components/ProductHero.tsx)
 //
-//  Client Component que agrupa:
-//   • Galeria interativa (miniaturas + setas + troca por sabor)
-//   • Coluna de info (marca, nome, preço, descrição, VariantSelector)
-//   • Botão Compartilhar
-//
-//  Recebe o produto completo do Server Component (page.tsx) e
-//  gerencia localmente o estado de imagem ativa.
+//  Galeria com:
+//   • imagem principal dinâmica via skus_variacoes.image_url
+//   • imagens fixas/genéricas via products.images
+//   • troca de sabor sem recarregar página
 // ================================================================
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { VariantSelector } from './VariantSelector';
-import type { ProductWithVariants } from '@/lib/types';
+import type { ProductWithVariants, CtaStatus } from '@/lib/types';
 import { WHATSAPP_NUMBER, getProductWaURL } from '@/lib/whatsapp';
 
 // ── Helper ───────────────────────────────────────────────────────
@@ -31,43 +28,76 @@ interface Props {
 
 // ── Componente ───────────────────────────────────────────────────
 export function ProductHero({ product }: Props) {
-  const images = (product.images ?? []).map(assetUrl);
+  // Agora product.images guarda APENAS imagens fixas/genéricas:
+  // exemplo: -2.jpg, -3.jpg, -4.jpg
+  const fixedImages = useMemo(
+    () => (product.images ?? []).map(assetUrl),
+    [product.images]
+  );
 
-  // Índice da miniatura selecionada manualmente
-  const [activeIdx, setActiveIdx] = useState(0);
-  // Imagem injetada pelo VariantSelector quando sabor muda (opcional)
-  const [imageOverride, setImageOverride] = useState<string | null>(null);
+  // Pega a primeira imagem principal disponível em skus_variacoes.image_url
+  // Isso serve como imagem inicial da página.
 
-  const hasVariants  = product.skus_variacoes?.length > 0;
-  const hasMultiImg  = images.length > 1;
 
-  // Imagem principal: override (sabor) > miniatura selecionada
-  const mainSrc = imageOverride ?? images[activeIdx] ?? null;
+  const initialSkuImage = useMemo(() => {
+    return product.skus_variacoes?.find(sku => sku.image_url)?.image_url ?? null;
+  }, [product.skus_variacoes]);
 
-  // Qual miniatura fica "ativa": tenta casar o override com uma thumb
-  const activeThumbIdx = imageOverride
-    ? images.findIndex(s => s === imageOverride)
-    : activeIdx;
+  const [skuMainImage, setSkuMainImage] = useState<string | null>(
+    () => initialSkuImage ? assetUrl(initialSkuImage) : null
+  );
 
-  // ── Handlers de galeria ──────────────────────────────────────
-  const handlePrev = useCallback(() => {
-    setImageOverride(null);
-    setActiveIdx(i => (i - 1 + images.length) % images.length);
-  }, [images.length]);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
-  const handleNext = useCallback(() => {
-    setImageOverride(null);
-    setActiveIdx(i => (i + 1) % images.length);
-  }, [images.length]);
+  const thumbsRef = useRef<HTMLDivElement>(null);
 
-  const handleThumb = useCallback((idx: number) => {
-    setActiveIdx(idx);
-    setImageOverride(null);
+  const scrollThumbs = useCallback((direction: 'left' | 'right') => {
+    const el = thumbsRef.current;
+    if (!el) return;
+
+    el.scrollBy({
+      left: direction === 'left' ? -180 : 180,
+      behavior: 'smooth',
+    });
   }, []);
 
-  // Chamado pelo VariantSelector quando sabor com imagem é selecionado
-  const handleImageChange = useCallback((url: string) => {
-    setImageOverride(assetUrl(url));
+  const galleryImages = useMemo(() => {
+    const imgs = [
+      skuMainImage,
+      ...fixedImages,
+    ].filter((src): src is string => Boolean(src));
+
+    return Array.from(new Set(imgs));
+  }, [skuMainImage, fixedImages]);
+
+  const hasVariants = product.skus_variacoes?.length > 0;
+  const hasMultiImg = galleryImages.length > 1;
+
+  const mainSrc = galleryImages[activeImageIdx] ?? null;
+
+  const handlePrev = useCallback(() => {
+    if (!galleryImages.length) return;
+    setActiveImageIdx(i => (i - 1 + galleryImages.length) % galleryImages.length);
+  }, [galleryImages.length]);
+
+  const handleNext = useCallback(() => {
+    if (!galleryImages.length) return;
+    setActiveImageIdx(i => (i + 1) % galleryImages.length);
+  }, [galleryImages.length]);
+
+  const handleThumb = useCallback((idx: number) => {
+    setActiveImageIdx(idx);
+  }, []);
+
+  const handleImageChange = useCallback((url: string | null) => {
+    if (url) {
+      setSkuMainImage(assetUrl(url));
+      setActiveImageIdx(0);
+      return;
+    }
+
+    setSkuMainImage(null);
+    setActiveImageIdx(0);
   }, []);
 
   // ── Share ────────────────────────────────────────────────────
@@ -76,8 +106,8 @@ export function ProductHero({ product }: Props) {
       if (navigator?.share) {
         await navigator.share({
           title: `${product.name} — ${product.brand}`,
-          text:  product.description ?? undefined,
-          url:   window.location.href,
+          text: product.description ?? undefined,
+          url: window.location.href,
         });
       } else {
         await navigator.clipboard.writeText(window.location.href);
@@ -88,12 +118,35 @@ export function ProductHero({ product }: Props) {
     }
   }, [product.name, product.brand, product.description]);
 
-  // ── Preço base formatado ─────────────────────────────────────
-  const [priceInt, priceDec] = product.base_price.toFixed(2).split('.');
+  // ── Estado do preço/status da variação selecionada ─────────────
+  const [variantPrice, setVariantPrice] = useState(product.base_price);
 
-  // WhatsApp direto (sem variações)
+  const [variantStatus, setVariantStatus] = useState<CtaStatus>(() => {
+    const firstSku = product.skus_variacoes?.[0] ?? null;
+
+    if (!product.skus_variacoes?.length) return 'comprar';
+    if (!firstSku) return 'indisponivel';
+
+    return firstSku.stock > 0 ? 'comprar' : 'encomenda';
+  });
+
+  const handleVariantChange = useCallback(
+    ({ price, status }: { price: number; status: CtaStatus }) => {
+      setVariantPrice(price);
+      setVariantStatus(status);
+    },
+    []
+  );
+
+  const displayPrice = hasVariants ? variantPrice : product.base_price;
+  const shouldShowPrice = hasVariants ? variantStatus === 'comprar' : true;
+
+  // ── Preço base formatado ─────────────────────────────────────
+  const [priceInt, priceDec] = displayPrice.toFixed(2).split('.');
+
+  // WhatsApp direto para produto sem variações
   const directWaUrl = getProductWaURL({
-    name:  product.name,
+    name: product.name,
     brand: product.brand,
     price: product.base_price,
   });
@@ -107,6 +160,7 @@ export function ProductHero({ product }: Props) {
           {/* ════ GALERIA ════ */}
           <div className="pdp-gallery">
             <div className="pdp-gallery__stage">
+
               {/* Seta anterior */}
               {hasMultiImg && (
                 <button
@@ -151,25 +205,44 @@ export function ProductHero({ product }: Props) {
               )}
             </div>
 
-            {/* Miniaturas */}
+            {/* Miniaturas: APENAS imagens fixas de products.images */}
             {hasMultiImg && (
-              <div className="pdp-thumbs">
-                {images.map((src, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`pdp-thumb${i === activeThumbIdx ? ' active' : ''}`}
-                    onClick={() => handleThumb(i)}
-                    aria-label={`Ver imagem ${i + 1}`}
-                    aria-pressed={i === activeThumbIdx}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={src}
-                      alt={`${product.name} — imagem ${i + 1}`}
-                    />
-                  </button>
-                ))}
+              <div className="pdp-thumbs-wrap">
+                <button
+                  type="button"
+                  className="pdp-thumbs-arrow pdp-thumbs-arrow--left"
+                  onClick={() => scrollThumbs('left')}
+                  aria-label="Ver imagens anteriores"
+                >
+                  <i className="fa-solid fa-chevron-left" aria-hidden="true" />
+                </button>
+
+                <div className="pdp-thumbs" ref={thumbsRef}>
+                  {galleryImages.map((src, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`pdp-thumb${i === activeImageIdx ? ' active' : ''}`}
+                      onClick={() => handleThumb(i)}
+                      aria-label={`Ver imagem ${i + 1}`}
+                      aria-pressed={i === activeImageIdx}
+                    >
+                      <img
+                        src={src}
+                        alt={`${product.name} — imagem ${i + 1}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="pdp-thumbs-arrow pdp-thumbs-arrow--right"
+                  onClick={() => scrollThumbs('right')}
+                  aria-label="Ver próximas imagens"
+                >
+                  <i className="fa-solid fa-chevron-right" aria-hidden="true" />
+                </button>
               </div>
             )}
           </div>
@@ -177,13 +250,13 @@ export function ProductHero({ product }: Props) {
           {/* ════ INFO ════ */}
           <div className="pdp-info">
 
-            {/* "← Voltar ao catálogo" */}
+            {/* Voltar ao catálogo */}
             <Link href="/#produtos" className="pdp-back-link">
               <i className="fa-solid fa-arrow-left" aria-hidden="true" />
               Voltar ao catálogo
             </Link>
 
-            {/* Cabeçalho: marca, badge, nome, categoria */}
+            {/* Cabeçalho */}
             <div className="pdp-info__header">
               <div className="pdp-info__top-row">
                 <span className="pdp-brand">{product.brand}</span>
@@ -191,39 +264,44 @@ export function ProductHero({ product }: Props) {
                   <span className="pdp-badge">⭐ {product.badge}</span>
                 )}
               </div>
+
               <h1 className="pdp-name">{product.name}</h1>
+
               <span className="pdp-category-tag">
                 {product.category.toUpperCase()}
               </span>
             </div>
 
-            {/* Bloco de preço base */}
-            <div className="pdp-price-block">
-              <div className="pdp-price">
-                <span className="pdp-price__curr">R$</span>
-                <span className="pdp-price__val">
-                  {priceInt},{priceDec}
-                </span>
+            {/* Preço: aparece somente quando tem estoque */}
+            {shouldShowPrice && (
+              <div className="pdp-price-block">
+                <div className="pdp-price">
+                  <span className="pdp-price__curr">R$</span>
+                  <span className="pdp-price__val">
+                    {priceInt},{priceDec}
+                  </span>
+                </div>
+
+                <p className="pdp-price__note">
+                  Consulte condições de pagamento e entrega pelo WhatsApp
+                </p>
               </div>
-              <p className="pdp-price__note">
-                Consulte condições de pagamento e entrega pelo WhatsApp
-              </p>
-            </div>
+            )}
 
             {/* Descrição */}
             {product.description && (
               <p className="pdp-description">{product.description}</p>
             )}
 
-            {/* Variações + CTA (VariantSelector já inclui preço dinâmico + botão WA) */}
+            {/* Variações */}
             {hasVariants ? (
               <VariantSelector
                 product={product}
                 whatsappNumber={WHATSAPP_NUMBER}
                 onImageChange={handleImageChange}
+                onVariantChange={handleVariantChange}
               />
             ) : (
-              /* Produto sem variações: CTA direto */
               <div className="pdp-cta-group">
                 <a
                   href={directWaUrl}
@@ -237,7 +315,7 @@ export function ProductHero({ product }: Props) {
               </div>
             )}
 
-            {/* Compartilhar — sempre visível */}
+            {/* Compartilhar */}
             <div className="pdp-cta-group">
               <button
                 type="button"
@@ -250,6 +328,7 @@ export function ProductHero({ product }: Props) {
             </div>
 
           </div>{/* /pdp-info */}
+
         </div>{/* /pdp-hero__inner */}
       </div>{/* /container */}
     </section>

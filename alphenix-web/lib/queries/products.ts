@@ -47,24 +47,24 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
-    .from('products')
-    .select(`
-      id, slug, name, brand, category,
-      description, badge, brand_color, brand_initials,
-      base_price, images, benefits, how_to_use, nutrition, active,
-      created_at, updated_at,
+  .from('products')
+  .select(`
+    id, slug, name, brand, category,
+    description, badge, brand_color, brand_initials,
+    base_price, images, benefits, how_to_use, nutrition, active,
+    created_at, updated_at,
 
-      skus_variacoes (
-        id, product_id, sabor_id, tamanho_id, tipo_embalagem_id,
-        sku_code, price, image_url, stock, available, created_at,
-        sabores ( id, nome ),
-        tamanhos ( id, nome ),
-        tipos_embalagem ( id, nome )
-      )
-    `)
-    .eq('slug', slug)
-    .eq('active', true)
-    .single();
+    skus_variacoes (
+      id, product_id, sabor_id, tamanho_id, tipo_embalagem_id,
+      sku_code, price, image_url, stock, available, created_at,
+      sabores ( id, nome ),
+      tamanhos ( id, nome ),
+      tipos_embalagem ( id, nome )
+    )
+  `)
+  .eq('slug', slug)
+  .eq('active', true)
+  .single();
 
   if (error) {
     if (error.code === 'PGRST116') return null; // nenhuma linha encontrada
@@ -122,7 +122,7 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
       description, badge, brand_color, brand_initials,
       base_price, images, benefits, how_to_use, nutrition, active,
       created_at, updated_at,
-      skus_variacoes ( price, stock, available )
+      skus_variacoes ( price, stock, available, image_url )
     `)
     .eq('active', true)
     .order('created_at', { ascending: true });
@@ -136,17 +136,29 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
   if (error) throw new Error(`[getAllProducts] ${error.message}`);
 
   return (data ?? []).map(product => {
-    type RawSku = { price: number | null; stock: number; available: boolean };
-    const skus = (product.skus_variacoes as RawSku[]) ?? [];
+  type RawSku = {
+    price: number | null;
+    stock: number;
+    available: boolean;
+    image_url: string | null;
+  };
 
-    const availableSkus = skus.filter(s => s.available);
-    const prices = availableSkus.map(s => s.price ?? product.base_price);
+  const skus = (product.skus_variacoes as RawSku[]) ?? [];
 
-    return {
-      ...product,
-      skus_variacoes: undefined,
-      min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
-      has_variants: skus.length > 1,
-    } as unknown as ProductCard;
-  });
+  const availableSkus = skus.filter(s => s.available);
+  const prices = availableSkus.map(s => s.price ?? product.base_price);
+
+  const coverSku =
+    availableSkus.find(s => s.image_url) ??
+    skus.find(s => s.image_url) ??
+    null;
+
+  return {
+    ...product,
+    skus_variacoes: undefined,
+    min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
+    has_variants: skus.length > 1,
+    cover_image_url: coverSku?.image_url ?? product.images?.[0] ?? null,
+  } as unknown as ProductCard;
+});
 }

@@ -200,7 +200,7 @@ function ProductCardItem({
   index: number;
 }) {
   const delay = `reveal-delay-${(index % 4) + 1}`;
-  const mainImage = product.images?.[0];
+  const mainImage = product.cover_image_url ?? product.images?.[0] ?? null;
   const price = product.min_price ?? product.base_price ?? 0;
   const priceLabel = price.toFixed(2).replace('.', ',');
 

@@ -29,10 +29,12 @@ import styles from './VariantSelector.module.css';
 
 // ── Props ────────────────────────────────────────────────────────
 interface VariantSelectorProps {
-  product:          ProductWithVariants;
-  whatsappNumber:   string;
+  product: ProductWithVariants;
+  whatsappNumber: string;
   /** Chamado quando o SKU resolvido tem uma imagem específica. */
-  onImageChange?:   (imageUrl: string) => void;
+  onImageChange?: (imageUrl: string | null) => void;
+  /** Informa o preço/status atual para o ProductHero controlar o preço de cima. */
+  onVariantChange?: (data: { price: number; status: CtaStatus }) => void;
 }
 
 
@@ -43,21 +45,35 @@ interface VariantSelectorProps {
  * dimensão que o produto realmente usa.
  */
 function buildInitialSelection(product: ProductWithVariants): SelectedValues {
+  const firstSku =
+    product.skus_variacoes.find(sku => sku.stock > 0) ??
+    product.skus_variacoes[0] ??
+    null;
+
+  if (firstSku) {
+    return {
+      saborId: firstSku.sabor_id ?? undefined,
+      tamanhoId: firstSku.tamanho_id ?? undefined,
+      embalagemId: firstSku.tipo_embalagem_id ?? undefined,
+    };
+  }
+
   const initial: SelectedValues = {};
 
   if (product.sabores_disponiveis.length > 0) {
     initial.saborId = product.sabores_disponiveis[0].id;
   }
+
   if (product.tamanhos_disponiveis.length > 0) {
     initial.tamanhoId = product.tamanhos_disponiveis[0].id;
   }
+
   if (product.tipos_embalagem_disponiveis.length > 0) {
     initial.embalagemId = product.tipos_embalagem_disponiveis[0].id;
   }
 
   return initial;
 }
-
 /**
  * Formata preço no padrão brasileiro.
  */
@@ -71,6 +87,7 @@ export function VariantSelector({
   product,
   whatsappNumber,
   onImageChange,
+  onVariantChange,
 }: VariantSelectorProps) {
 
   // ── Estado: valores selecionados por dimensão ─────────────────
@@ -83,15 +100,15 @@ export function VariantSelector({
   // Dimensões que o produto não usa (lista *_disponiveis vazia) são
   // ignoradas na comparação.
   const currentSku = useMemo<SkuVariacao | null>(() => {
-    const usaSabor     = product.sabores_disponiveis.length > 0;
-    const usaTamanho    = product.tamanhos_disponiveis.length > 0;
-    const usaEmbalagem  = product.tipos_embalagem_disponiveis.length > 0;
+    const usaSabor = product.sabores_disponiveis.length > 0;
+    const usaTamanho = product.tamanhos_disponiveis.length > 0;
+    const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
 
     return (
       product.skus_variacoes.find(sku =>
-        (!usaSabor      || sku.sabor_id          === (selectedValues.saborId     ?? null)) &&
-        (!usaTamanho    || sku.tamanho_id         === (selectedValues.tamanhoId    ?? null)) &&
-        (!usaEmbalagem  || sku.tipo_embalagem_id  === (selectedValues.embalagemId  ?? null))
+        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
+        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
       ) ?? null
     );
   }, [selectedValues, product]);
@@ -109,15 +126,15 @@ export function VariantSelector({
   //   daquela combinação específica esteja zerado (decidimos
   //   "comprar" vs "encomenda" depois, com base no currentSku).
   const disponibilidade = useMemo<OptionAvailability>(() => {
-    const usaSabor     = product.sabores_disponiveis.length > 0;
-    const usaTamanho    = product.tamanhos_disponiveis.length > 0;
-    const usaEmbalagem  = product.tipos_embalagem_disponiveis.length > 0;
+    const usaSabor = product.sabores_disponiveis.length > 0;
+    const usaTamanho = product.tamanhos_disponiveis.length > 0;
+    const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
 
     const sabor: Record<string, boolean> = {};
     for (const s of product.sabores_disponiveis) {
       sabor[s.id] = product.skus_variacoes.some(sku =>
         sku.sabor_id === s.id &&
-        (!usaTamanho   || sku.tamanho_id        === (selectedValues.tamanhoId   ?? null)) &&
+        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
         (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
       );
     }
@@ -126,7 +143,7 @@ export function VariantSelector({
     for (const t of product.tamanhos_disponiveis) {
       tamanho[t.id] = product.skus_variacoes.some(sku =>
         sku.tamanho_id === t.id &&
-        (!usaSabor     || sku.sabor_id          === (selectedValues.saborId     ?? null)) &&
+        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
         (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
       );
     }
@@ -135,7 +152,7 @@ export function VariantSelector({
     for (const e of product.tipos_embalagem_disponiveis) {
       embalagem[e.id] = product.skus_variacoes.some(sku =>
         sku.tipo_embalagem_id === e.id &&
-        (!usaSabor   || sku.sabor_id   === (selectedValues.saborId   ?? null)) &&
+        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
         (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null))
       );
     }
@@ -168,10 +185,9 @@ export function VariantSelector({
   // sabores, porque a mesma "Morango" pode ter fotos diferentes
   // em produtos diferentes).
   useEffect(() => {
-    if (currentSku?.image_url && onImageChange) {
-      onImageChange(currentSku.image_url);
-    }
-  }, [currentSku, onImageChange]);
+  onImageChange?.(currentSku?.image_url ?? null);
+  onVariantChange?.({ price: currentPrice, status: statusCta });
+}, [currentSku, currentPrice, statusCta, onImageChange, onVariantChange]);
 
 
   // ── Montar mensagem do WhatsApp com as seleções ───────────────
@@ -200,7 +216,7 @@ export function VariantSelector({
       '',
       `*${product.name} — ${product.brand}*`,
       ...linhas,
-      `Preço: *${formatPrice(currentPrice)}*`,
+      ...(statusCta === 'comprar' ? [`Preço: *${formatPrice(currentPrice)}*`] : []),
       '',
       'Poderia me passar mais informações? 🙏',
     ];
@@ -225,7 +241,7 @@ export function VariantSelector({
 
           <div className={styles.options} role="group" aria-label="Selecionar Sabor">
             {product.sabores_disponiveis.map(sabor => {
-              const isSelected  = selectedValues.saborId === sabor.id;
+              const isSelected = selectedValues.saborId === sabor.id;
               const isAvailable = disponibilidade.sabor[sabor.id] ?? false;
 
               return (
@@ -234,7 +250,7 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
-                    isSelected  ? styles.optionBtnActive    : '',
+                    isSelected ? styles.optionBtnActive : '',
                     !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
                   onClick={() => isAvailable && handleSelect('saborId', sabor.id)}
@@ -247,7 +263,7 @@ export function VariantSelector({
                   {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
                   <span className="sr-only">
                     {!isAvailable ? ' (Indisponível)' : ''}
-                    {isSelected   ? ' (Selecionado)'  : ''}
+                    {isSelected ? ' (Selecionado)' : ''}
                   </span>
                 </button>
               );
@@ -268,7 +284,7 @@ export function VariantSelector({
 
           <div className={styles.options} role="group" aria-label="Selecionar Tamanho">
             {product.tamanhos_disponiveis.map(tamanho => {
-              const isSelected  = selectedValues.tamanhoId === tamanho.id;
+              const isSelected = selectedValues.tamanhoId === tamanho.id;
               const isAvailable = disponibilidade.tamanho[tamanho.id] ?? false;
 
               return (
@@ -277,7 +293,7 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
-                    isSelected  ? styles.optionBtnActive    : '',
+                    isSelected ? styles.optionBtnActive : '',
                     !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
                   onClick={() => isAvailable && handleSelect('tamanhoId', tamanho.id)}
@@ -290,7 +306,7 @@ export function VariantSelector({
                   {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
                   <span className="sr-only">
                     {!isAvailable ? ' (Indisponível)' : ''}
-                    {isSelected   ? ' (Selecionado)'  : ''}
+                    {isSelected ? ' (Selecionado)' : ''}
                   </span>
                 </button>
               );
@@ -311,7 +327,7 @@ export function VariantSelector({
 
           <div className={styles.options} role="group" aria-label="Selecionar Embalagem">
             {product.tipos_embalagem_disponiveis.map(embalagem => {
-              const isSelected  = selectedValues.embalagemId === embalagem.id;
+              const isSelected = selectedValues.embalagemId === embalagem.id;
               const isAvailable = disponibilidade.embalagem[embalagem.id] ?? false;
 
               return (
@@ -320,7 +336,7 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
-                    isSelected  ? styles.optionBtnActive    : '',
+                    isSelected ? styles.optionBtnActive : '',
                     !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
                   onClick={() => isAvailable && handleSelect('embalagemId', embalagem.id)}
@@ -333,7 +349,7 @@ export function VariantSelector({
                   {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
                   <span className="sr-only">
                     {!isAvailable ? ' (Indisponível)' : ''}
-                    {isSelected   ? ' (Selecionado)'  : ''}
+                    {isSelected ? ' (Selecionado)' : ''}
                   </span>
                 </button>
               );
@@ -342,17 +358,11 @@ export function VariantSelector({
         </div>
       )}
 
-
-      {/* ── Preço atual (atualiza conforme seleção) ── */}
-      <div className={styles.priceRow}>
-        <span className={styles.price}>{formatPrice(currentPrice)}</span>
-        {statusCta === 'encomenda' && (
-          <span className={styles.badgeSoldOut}>Esgotado</span>
-        )}
-        {statusCta === 'indisponivel' && (
+      {statusCta === 'indisponivel' && (
+        <div className={styles.priceRow}>
           <span className={styles.badgeSoldOut}>Combinação Indisponível</span>
-        )}
-      </div>
+        </div>
+      )}
 
 
       {/* ── CTA WhatsApp ── */}
