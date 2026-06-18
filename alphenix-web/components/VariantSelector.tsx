@@ -96,13 +96,19 @@ export function VariantSelector({
   }, [selectedValues, skusValidos, usaSabor, usaTamanho, usaEmbalagem]);
 
   // ── LÓGICA 2: Disponibilidade de cada botão de opção ───────────
-  // Botão habilitado = existe SKU vendável para aquela combinação.
-  // Isso independe do estoque: stock=0 continua habilitado e vira encomenda.
+  // Botão habilitado = existe SKU vendável para aquela opção.
+  // Importante: tamanho e embalagem NÃO podem ficar presos demais à seleção atual.
+  // Exemplo real: DUX 1,8kg existe somente como Refil. Se o usuário estiver em
+  // 900g + Pote, o tamanho 1,8kg precisa continuar clicável para o código
+  // trocar automaticamente a embalagem para Refil.
   const disponibilidade = useMemo<OptionAvailability>(() => {
     const sabor: Record<string, boolean> = {};
     const tamanho: Record<string, boolean> = {};
     const embalagem: Record<string, boolean> = {};
 
+    // Sabor continua respeitando tamanho + embalagem selecionados.
+    // Depois que 1,8kg selecionar Refil automaticamente, aqui aparecem
+    // somente os sabores que realmente existem para 1,8kg + Refil.
     for (const s of product.sabores_disponiveis) {
       sabor[s.id] = skusValidos.some(sku =>
         sku.sabor_id === s.id &&
@@ -111,18 +117,18 @@ export function VariantSelector({
       );
     }
 
+    // Tamanho precisa ser livre: se existe qualquer SKU vendável daquele tamanho,
+    // deixa clicar. O handleSelect abaixo resolve sabor/embalagem automaticamente.
     for (const t of product.tamanhos_disponiveis) {
-      tamanho[t.id] = skusValidos.some(sku =>
-        sku.tamanho_id === t.id &&
-        (!usaSabor || !selectedValues.saborId || sku.sabor_id === selectedValues.saborId) &&
-        (!usaEmbalagem || !selectedValues.embalagemId || sku.tipo_embalagem_id === selectedValues.embalagemId)
-      );
+      tamanho[t.id] = skusValidos.some(sku => sku.tamanho_id === t.id);
     }
 
+    // Embalagem respeita o tamanho atual, mas não prende no sabor atual.
+    // Assim, se o sabor atual não existir naquela embalagem/tamanho, o seletor
+    // troca para o primeiro SKU válido sem travar a navegação.
     for (const e of product.tipos_embalagem_disponiveis) {
       embalagem[e.id] = skusValidos.some(sku =>
         sku.tipo_embalagem_id === e.id &&
-        (!usaSabor || !selectedValues.saborId || sku.sabor_id === selectedValues.saborId) &&
         (!usaTamanho || !selectedValues.tamanhoId || sku.tamanho_id === selectedValues.tamanhoId)
       );
     }
@@ -133,10 +139,8 @@ export function VariantSelector({
     product.tamanhos_disponiveis,
     product.tipos_embalagem_disponiveis,
     skusValidos,
-    selectedValues.saborId,
     selectedValues.tamanhoId,
     selectedValues.embalagemId,
-    usaSabor,
     usaTamanho,
     usaEmbalagem,
   ]);
@@ -198,16 +202,40 @@ export function VariantSelector({
 
         if (exactSku) return next;
 
-        // Fallback: se a nova combinação exata não existir, cai para um SKU
-        // vendável que tenha o valor clicado. Isso evita seleção quebrada.
-        const fallbackSku = skusValidos.find(sku => {
+        // Fallback inteligente:
+        // Se a combinação exata não existir, pega um SKU vendável que tenha
+        // a opção clicada e tenta preservar o máximo possível da seleção anterior.
+        // Exemplo: clicar em 1,8kg mantendo sabor Neutro deve virar
+        // 1,8kg + Refil + Neutro, e não bloquear porque antes estava em Pote.
+        const candidates = skusValidos.filter(sku => {
           if (dimensao === 'saborId') return sku.sabor_id === valueId;
           if (dimensao === 'tamanhoId') return sku.tamanho_id === valueId;
           if (dimensao === 'embalagemId') return sku.tipo_embalagem_id === valueId;
           return false;
         });
 
-        if (!fallbackSku) return prev;
+        if (!candidates.length) return prev;
+
+        const fallbackSku = candidates
+          .map((sku, index) => {
+            let score = 0;
+
+            if (dimensao !== 'saborId' && prev.saborId && sku.sabor_id === prev.saborId) {
+              score += 100;
+            }
+            if (dimensao !== 'tamanhoId' && prev.tamanhoId && sku.tamanho_id === prev.tamanhoId) {
+              score += 80;
+            }
+            if (dimensao !== 'embalagemId' && prev.embalagemId && sku.tipo_embalagem_id === prev.embalagemId) {
+              score += 60;
+            }
+            if (sku.stock > 0) {
+              score += 5;
+            }
+
+            return { sku, score, index };
+          })
+          .sort((a, b) => b.score - a.score || a.index - b.index)[0].sku;
 
         return {
           saborId: fallbackSku.sabor_id ?? undefined,
