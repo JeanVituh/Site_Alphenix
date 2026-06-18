@@ -1,24 +1,29 @@
 'use client';
 // ================================================================
 //  ALPHENIX — VariantSelector (components/VariantSelector.tsx)
+//  v2: modelo relacional (sabores / tamanhos / tipos_embalagem)
 //
 //  Client Component responsável pela seleção interativa de variações.
 //
 //  Lógica central:
 //  ┌─────────────────────────────────────────────────────────────┐
-//  │  selectedValues  → Record<optionTypeId, optionValueId>      │
-//  │  currentSku      → useMemo: acha o SKU da seleção atual     │
-//  │  optionAvailability → useMemo: calcula quais botões ficam   │
-//  │                     desabilitados com base na MATRIZ        │
+//  │  selectedValues  → { saborId?, tamanhoId?, embalagemId? }    │
+//  │  currentSku      → useMemo: acha a linha de skus_variacoes  │
+//  │                     que combina exatamente com a seleção     │
+//  │  disponibilidade → useMemo: para cada botão, existe ALGUMA  │
+//  │                     linha (independente do estoque) que      │
+//  │                     combine com o que já está selecionado?   │
+//  │  statusCta       → 'comprar' | 'encomenda' | 'indisponivel'  │
 //  └─────────────────────────────────────────────────────────────┘
 // ================================================================
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type {
   ProductWithVariants,
   SelectedValues,
-  OptionAvailabilityMap,
-  SKU,
+  OptionAvailability,
+  SkuVariacao,
+  CtaStatus,
 } from '@/lib/types';
 import styles from './VariantSelector.module.css';
 
@@ -26,7 +31,7 @@ import styles from './VariantSelector.module.css';
 interface VariantSelectorProps {
   product:          ProductWithVariants;
   whatsappNumber:   string;
-  /** Chamado quando um sabor com imagem é selecionado. */
+  /** Chamado quando o SKU resolvido tem uma imagem específica. */
   onImageChange?:   (imageUrl: string) => void;
 }
 
@@ -34,15 +39,22 @@ interface VariantSelectorProps {
 // ── Helpers ──────────────────────────────────────────────────────
 
 /**
- * Monta a seleção inicial: primeiro option_value de cada option_type.
+ * Monta a seleção inicial: primeiro valor disponível de cada
+ * dimensão que o produto realmente usa.
  */
 function buildInitialSelection(product: ProductWithVariants): SelectedValues {
   const initial: SelectedValues = {};
-  for (const optionType of product.option_types) {
-    if (optionType.option_values.length > 0) {
-      initial[optionType.id] = optionType.option_values[0].id;
-    }
+
+  if (product.sabores_disponiveis.length > 0) {
+    initial.saborId = product.sabores_disponiveis[0].id;
   }
+  if (product.tamanhos_disponiveis.length > 0) {
+    initial.tamanhoId = product.tamanhos_disponiveis[0].id;
+  }
+  if (product.tipos_embalagem_disponiveis.length > 0) {
+    initial.embalagemId = product.tipos_embalagem_disponiveis[0].id;
+  }
+
   return initial;
 }
 
@@ -61,220 +73,327 @@ export function VariantSelector({
   onImageChange,
 }: VariantSelectorProps) {
 
-  // ── Estado: valores selecionados por optionTypeId ────────────
+  // ── Estado: valores selecionados por dimensão ─────────────────
   const [selectedValues, setSelectedValues] = useState<SelectedValues>(
     () => buildInitialSelection(product)
   );
 
 
-  // ── LÓGICA 1: Encontrar o SKU atual ──────────────────────────
-  // useMemo só recalcula quando selectedValues ou skus mudam.
-  const currentSku = useMemo<SKU | null>(() => {
-    const selectedIds = Object.values(selectedValues);
-
-    // Precisa ter uma seleção para cada dimensão
-    if (selectedIds.length !== product.option_types.length) return null;
+  // ── LÓGICA 1: Encontrar o SKU que combina com a seleção atual ──
+  // Dimensões que o produto não usa (lista *_disponiveis vazia) são
+  // ignoradas na comparação.
+  const currentSku = useMemo<SkuVariacao | null>(() => {
+    const usaSabor     = product.sabores_disponiveis.length > 0;
+    const usaTamanho    = product.tamanhos_disponiveis.length > 0;
+    const usaEmbalagem  = product.tipos_embalagem_disponiveis.length > 0;
 
     return (
-      product.skus.find(sku => {
-        const skuValueIds = new Set(
-          sku.sku_option_values.map(sov => sov.option_value_id)
-        );
-        // O SKU precisa conter TODOS os valores selecionados
-        return selectedIds.every(id => skuValueIds.has(id));
-      }) ?? null
+      product.skus_variacoes.find(sku =>
+        (!usaSabor      || sku.sabor_id          === (selectedValues.saborId     ?? null)) &&
+        (!usaTamanho    || sku.tamanho_id         === (selectedValues.tamanhoId    ?? null)) &&
+        (!usaEmbalagem  || sku.tipo_embalagem_id  === (selectedValues.embalagemId  ?? null))
+      ) ?? null
     );
-  }, [selectedValues, product.skus, product.option_types.length]);
+  }, [selectedValues, product]);
 
 
-  // ── LÓGICA 2: Calcular disponibilidade por opção ─────────────
-  // ⭐ Esta é a lógica central da Matriz de SKUs.
+  // ── LÓGICA 2: Disponibilidade de cada botão de opção ───────────
+  // ⭐ Para cada valor de cada dimensão, perguntamos:
+  //   "Se eu selecionar ESTE valor, existe ALGUMA linha em
+  //    skus_variacoes que combine ele com as outras dimensões
+  //    JÁ SELECIONADAS — independente do estoque?"
   //
-  // Para cada option_value de cada option_type, verificamos:
-  //   "Se eu selecionar ESTE valor, existe algum SKU disponível
-  //    que combine ELE com os demais valores JÁ SELECIONADOS?"
-  //
-  // Se a resposta for NÃO → botão desabilitado (sem estoque naquela combo)
-  // Se a resposta for SIM → botão habilitado
-  const optionAvailability = useMemo<OptionAvailabilityMap>(() => {
-    const result: OptionAvailabilityMap = {};
+  // Se a resposta for NÃO → essa combinação nunca foi cadastrada →
+  //   botão desabilitado (não clicável).
+  // Se a resposta for SIM → botão habilitado, mesmo que o estoque
+  //   daquela combinação específica esteja zerado (decidimos
+  //   "comprar" vs "encomenda" depois, com base no currentSku).
+  const disponibilidade = useMemo<OptionAvailability>(() => {
+    const usaSabor     = product.sabores_disponiveis.length > 0;
+    const usaTamanho    = product.tamanhos_disponiveis.length > 0;
+    const usaEmbalagem  = product.tipos_embalagem_disponiveis.length > 0;
 
-    for (const optionType of product.option_types) {
-      result[optionType.id] = {};
-
-      for (const value of optionType.option_values) {
-        // Simular: "e se eu clicar neste valor?"
-        const testSelection: SelectedValues = {
-          ...selectedValues,
-          [optionType.id]: value.id,
-        };
-        const testIds = Object.values(testSelection);
-
-        // Existe ao menos 1 SKU com stock > 0 que contém todos os testIds?
-        const hasAvailableSku = product.skus.some(sku => {
-          if (!sku.available) return false; // stock = 0
-          const skuValueIds = new Set(
-            sku.sku_option_values.map(sov => sov.option_value_id)
-          );
-          return testIds.every(id => skuValueIds.has(id));
-        });
-
-        result[optionType.id][value.id] = hasAvailableSku;
-      }
+    const sabor: Record<string, boolean> = {};
+    for (const s of product.sabores_disponiveis) {
+      sabor[s.id] = product.skus_variacoes.some(sku =>
+        sku.sabor_id === s.id &&
+        (!usaTamanho   || sku.tamanho_id        === (selectedValues.tamanhoId   ?? null)) &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
+      );
     }
 
-    return result;
-  }, [selectedValues, product.skus, product.option_types]);
+    const tamanho: Record<string, boolean> = {};
+    for (const t of product.tamanhos_disponiveis) {
+      tamanho[t.id] = product.skus_variacoes.some(sku =>
+        sku.tamanho_id === t.id &&
+        (!usaSabor     || sku.sabor_id          === (selectedValues.saborId     ?? null)) &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
+      );
+    }
+
+    const embalagem: Record<string, boolean> = {};
+    for (const e of product.tipos_embalagem_disponiveis) {
+      embalagem[e.id] = product.skus_variacoes.some(sku =>
+        sku.tipo_embalagem_id === e.id &&
+        (!usaSabor   || sku.sabor_id   === (selectedValues.saborId   ?? null)) &&
+        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null))
+      );
+    }
+
+    return { sabor, tamanho, embalagem };
+  }, [selectedValues, product]);
 
 
-  // ── LÓGICA 3: Preço e status de estoque ──────────────────────
-  const currentPrice   = currentSku?.price ?? product.base_price;
-  const isInStock      = (currentSku?.stock ?? 0) > 0;
-  const noneAvailable  = !product.skus.some(s => s.available);
+  // ── LÓGICA 3: Preço e status do CTA ─────────────────────────────
+  const currentPrice = currentSku?.price ?? product.base_price;
+
+  const statusCta: CtaStatus = !currentSku
+    ? 'indisponivel'              // combinação nunca cadastrada
+    : currentSku.stock > 0
+      ? 'comprar'                 // existe e tem estoque
+      : 'encomenda';               // existe, mas stock = 0
 
 
   // ── Handler: ao clicar em uma opção ──────────────────────────
   const handleSelect = useCallback(
-    (optionTypeId: string, valueId: string, imageUrl?: string | null) => {
-      setSelectedValues(prev => ({ ...prev, [optionTypeId]: valueId }));
-
-      // Notificar o pai sobre mudança de imagem (ex: trocar foto do sabor)
-      if (imageUrl && onImageChange) {
-        onImageChange(imageUrl);
-      }
+    (dimensao: keyof SelectedValues, valueId: string) => {
+      setSelectedValues(prev => ({ ...prev, [dimensao]: valueId }));
     },
-    [onImageChange]
+    []
   );
+
+
+  // ── Trocar a foto da galeria quando o SKU resolvido tiver uma ──
+  // imagem própria (image_url fica em skus_variacoes, não em
+  // sabores, porque a mesma "Morango" pode ter fotos diferentes
+  // em produtos diferentes).
+  useEffect(() => {
+    if (currentSku?.image_url && onImageChange) {
+      onImageChange(currentSku.image_url);
+    }
+  }, [currentSku, onImageChange]);
 
 
   // ── Montar mensagem do WhatsApp com as seleções ───────────────
   const whatsappUrl = useMemo(() => {
-    const selectionLines = product.option_types.map(ot => {
-      const valueId = selectedValues[ot.id];
-      const value   = ot.option_values.find(v => v.id === valueId);
-      return `${ot.label}: *${value?.label ?? '—'}*`;
-    });
+    const linhas: string[] = [];
 
-    const lines = [
-      'Olá! Tenho interesse no produto:',
+    if (product.sabores_disponiveis.length > 0) {
+      const sabor = product.sabores_disponiveis.find(s => s.id === selectedValues.saborId);
+      linhas.push(`Sabor: *${sabor?.nome ?? '—'}*`);
+    }
+    if (product.tamanhos_disponiveis.length > 0) {
+      const tamanho = product.tamanhos_disponiveis.find(t => t.id === selectedValues.tamanhoId);
+      linhas.push(`Tamanho: *${tamanho?.nome ?? '—'}*`);
+    }
+    if (product.tipos_embalagem_disponiveis.length > 0) {
+      const embalagem = product.tipos_embalagem_disponiveis.find(e => e.id === selectedValues.embalagemId);
+      linhas.push(`Embalagem: *${embalagem?.nome ?? '—'}*`);
+    }
+
+    const cabecalho = statusCta === 'encomenda'
+      ? 'Olá! Esse item está esgotado agora, mas gostaria de fazer uma encomenda:'
+      : 'Olá! Tenho interesse no produto:';
+
+    const mensagem = [
+      cabecalho,
       '',
       `*${product.name} — ${product.brand}*`,
-      ...selectionLines,
+      ...linhas,
       `Preço: *${formatPrice(currentPrice)}*`,
       '',
       'Poderia me passar mais informações? 🙏',
     ];
 
-    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-      lines.join('\n')
-    )}`;
-  }, [selectedValues, product, currentPrice, whatsappNumber]);
+    return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(mensagem.join('\n'))}`;
+  }, [selectedValues, product, currentPrice, whatsappNumber, statusCta]);
 
 
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className={styles.selector}>
 
-      {/* ── Grupos de variações ── */}
-      {product.option_types.map(optionType => {
-        const selectedValueId    = selectedValues[optionType.id];
-        const selectedValueLabel = optionType.option_values.find(
-          v => v.id === selectedValueId
-        )?.label ?? '';
+      {/* ── Grupo: Sabor ── */}
+      {product.sabores_disponiveis.length > 0 && (
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>
+            Sabor:{' '}
+            <strong className={styles.groupSelected}>
+              {product.sabores_disponiveis.find(s => s.id === selectedValues.saborId)?.nome ?? ''}
+            </strong>
+          </p>
 
-        return (
-          <div key={optionType.id} className={styles.group}>
-            <p className={styles.groupLabel}>
-              {optionType.label}:{' '}
-              <strong className={styles.groupSelected}>
-                {selectedValueLabel}
-              </strong>
-            </p>
+          <div className={styles.options} role="group" aria-label="Selecionar Sabor">
+            {product.sabores_disponiveis.map(sabor => {
+              const isSelected  = selectedValues.saborId === sabor.id;
+              const isAvailable = disponibilidade.sabor[sabor.id] ?? false;
 
-            <div
-              className={styles.options}
-              role="group"
-              aria-label={`Selecionar ${optionType.label}`}
-            >
-              {optionType.option_values.map(value => {
-                const isSelected  = selectedValues[optionType.id] === value.id;
-                const isAvailable = optionAvailability[optionType.id]?.[value.id] ?? false;
-
-                return (
-                  <button
-                    key={value.id}
-                    type="button"
-                    className={[
-                      styles.optionBtn,
-                      isSelected  ? styles.optionBtnActive    : '',
-                      !isAvailable ? styles.optionBtnDisabled : '',
-                    ].join(' ')}
-                    onClick={() =>
-                      isAvailable &&
-                      handleSelect(optionType.id, value.id, value.image_url)
-                    }
-                    disabled={!isAvailable}
-                    aria-pressed={isSelected}
-                    aria-disabled={!isAvailable}
-                    title={!isAvailable ? `${value.label} — Esgotado` : value.label}
-                  >
-                    {value.label}
-                    {/* Linha diagonal para indicar esgotado */}
-                    {!isAvailable && (
-                      <span className={styles.soldOutLine} aria-hidden="true" />
-                    )}
-                    <span className="sr-only">
-                      {!isAvailable ? ' (Esgotado)' : ''}
-                      {isSelected   ? ' (Selecionado)' : ''}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              return (
+                <button
+                  key={sabor.id}
+                  type="button"
+                  className={[
+                    styles.optionBtn,
+                    isSelected  ? styles.optionBtnActive    : '',
+                    !isAvailable ? styles.optionBtnDisabled : '',
+                  ].join(' ')}
+                  onClick={() => isAvailable && handleSelect('saborId', sabor.id)}
+                  disabled={!isAvailable}
+                  aria-pressed={isSelected}
+                  aria-disabled={!isAvailable}
+                  title={!isAvailable ? `${sabor.nome} — Combinação indisponível` : sabor.nome}
+                >
+                  {sabor.nome}
+                  {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
+                  <span className="sr-only">
+                    {!isAvailable ? ' (Indisponível)' : ''}
+                    {isSelected   ? ' (Selecionado)'  : ''}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      )}
+
+      {/* ── Grupo: Tamanho ── */}
+      {product.tamanhos_disponiveis.length > 0 && (
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>
+            Tamanho:{' '}
+            <strong className={styles.groupSelected}>
+              {product.tamanhos_disponiveis.find(t => t.id === selectedValues.tamanhoId)?.nome ?? ''}
+            </strong>
+          </p>
+
+          <div className={styles.options} role="group" aria-label="Selecionar Tamanho">
+            {product.tamanhos_disponiveis.map(tamanho => {
+              const isSelected  = selectedValues.tamanhoId === tamanho.id;
+              const isAvailable = disponibilidade.tamanho[tamanho.id] ?? false;
+
+              return (
+                <button
+                  key={tamanho.id}
+                  type="button"
+                  className={[
+                    styles.optionBtn,
+                    isSelected  ? styles.optionBtnActive    : '',
+                    !isAvailable ? styles.optionBtnDisabled : '',
+                  ].join(' ')}
+                  onClick={() => isAvailable && handleSelect('tamanhoId', tamanho.id)}
+                  disabled={!isAvailable}
+                  aria-pressed={isSelected}
+                  aria-disabled={!isAvailable}
+                  title={!isAvailable ? `${tamanho.nome} — Combinação indisponível` : tamanho.nome}
+                >
+                  {tamanho.nome}
+                  {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
+                  <span className="sr-only">
+                    {!isAvailable ? ' (Indisponível)' : ''}
+                    {isSelected   ? ' (Selecionado)'  : ''}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Grupo: Embalagem ── */}
+      {product.tipos_embalagem_disponiveis.length > 0 && (
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>
+            Embalagem:{' '}
+            <strong className={styles.groupSelected}>
+              {product.tipos_embalagem_disponiveis.find(e => e.id === selectedValues.embalagemId)?.nome ?? ''}
+            </strong>
+          </p>
+
+          <div className={styles.options} role="group" aria-label="Selecionar Embalagem">
+            {product.tipos_embalagem_disponiveis.map(embalagem => {
+              const isSelected  = selectedValues.embalagemId === embalagem.id;
+              const isAvailable = disponibilidade.embalagem[embalagem.id] ?? false;
+
+              return (
+                <button
+                  key={embalagem.id}
+                  type="button"
+                  className={[
+                    styles.optionBtn,
+                    isSelected  ? styles.optionBtnActive    : '',
+                    !isAvailable ? styles.optionBtnDisabled : '',
+                  ].join(' ')}
+                  onClick={() => isAvailable && handleSelect('embalagemId', embalagem.id)}
+                  disabled={!isAvailable}
+                  aria-pressed={isSelected}
+                  aria-disabled={!isAvailable}
+                  title={!isAvailable ? `${embalagem.nome} — Combinação indisponível` : embalagem.nome}
+                >
+                  {embalagem.nome}
+                  {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
+                  <span className="sr-only">
+                    {!isAvailable ? ' (Indisponível)' : ''}
+                    {isSelected   ? ' (Selecionado)'  : ''}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
 
       {/* ── Preço atual (atualiza conforme seleção) ── */}
       <div className={styles.priceRow}>
         <span className={styles.price}>{formatPrice(currentPrice)}</span>
-        {!isInStock && !noneAvailable && (
+        {statusCta === 'encomenda' && (
           <span className={styles.badgeSoldOut}>Esgotado</span>
         )}
-        {noneAvailable && (
-          <span className={styles.badgeSoldOut}>Produto Esgotado</span>
+        {statusCta === 'indisponivel' && (
+          <span className={styles.badgeSoldOut}>Combinação Indisponível</span>
         )}
       </div>
 
 
       {/* ── CTA WhatsApp ── */}
       <a
-        href={isInStock ? whatsappUrl : undefined}
+        href={statusCta !== 'indisponivel' ? whatsappUrl : undefined}
         className={[
           styles.ctaBtn,
-          !isInStock ? styles.ctaBtnDisabled : '',
+          statusCta === 'indisponivel' ? styles.ctaBtnDisabled : '',
         ].join(' ')}
-        target={isInStock ? '_blank' : undefined}
+        target={statusCta !== 'indisponivel' ? '_blank' : undefined}
         rel="noopener noreferrer"
         role="button"
-        aria-disabled={!isInStock}
+        aria-disabled={statusCta === 'indisponivel'}
         onClick={e => {
-          if (!isInStock) e.preventDefault();
+          if (statusCta === 'indisponivel') e.preventDefault();
         }}
       >
-        {isInStock ? (
+        {statusCta === 'comprar' && (
           <>
             <WhatsAppIcon />
             Pedir pelo WhatsApp
           </>
-        ) : (
-          <>❌ Combinação Esgotada</>
+        )}
+        {statusCta === 'encomenda' && (
+          <>
+            <WhatsAppIcon />
+            Fazer Encomenda
+          </>
+        )}
+        {statusCta === 'indisponivel' && (
+          <>❌ Combinação Indisponível</>
         )}
       </a>
 
-      {/* Mensagem de auxílio quando esgotado */}
-      {!isInStock && !noneAvailable && (
+      {/* Mensagens de auxílio */}
+      {statusCta === 'encomenda' && (
+        <p className={styles.helpText}>
+          Esse item está esgotado agora, mas você pode encomendar pelo WhatsApp.
+        </p>
+      )}
+      {statusCta === 'indisponivel' && (
         <p className={styles.helpText}>
           Tente outra combinação de sabor / tamanho / embalagem.
         </p>

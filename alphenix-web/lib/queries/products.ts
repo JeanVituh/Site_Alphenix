@@ -1,15 +1,49 @@
 // ================================================================
-//  ALPHENIX — lib/queries/products.ts
+//  ALPHENIX — lib/queries/products.ts (v2: modelo relacional)
 // ================================================================
 
 import { createSupabaseServerClient, createSupabaseStaticClient } from '@/lib/supabase/server';
-import type { ProductWithVariants, ProductCard, OptionType, SKU } from '@/lib/types';
+import type {
+  ProductWithVariants,
+  ProductCard,
+  SkuVariacao,
+  Sabor,
+  Tamanho,
+  TipoEmbalagem,
+} from '@/lib/types';
 
-// ── Query principal ──────────────────────────────────────────────
+// ── Helpers: deduplicar + ordenar os catálogos presentes no produto ──
+// Cada SKU traz sabores/tamanhos/tipos_embalagem embutidos (ou null,
+// se o produto não usa aquela dimensão). Aqui extraímos só os valores
+// distintos que realmente aparecem nas combinações deste produto.
 
-export async function getProductBySlug(
-  slug: string
-): Promise<ProductWithVariants | null> {
+function dedupSabores(skus: SkuVariacao[]): Sabor[] {
+  const mapa = new Map<string, Sabor>();
+  for (const sku of skus) {
+    if (sku.sabores) mapa.set(sku.sabores.id, sku.sabores);
+  }
+  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+function dedupTamanhos(skus: SkuVariacao[]): Tamanho[] {
+  const mapa = new Map<string, Tamanho>();
+  for (const sku of skus) {
+    if (sku.tamanhos) mapa.set(sku.tamanhos.id, sku.tamanhos);
+  }
+  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+function dedupEmbalagens(skus: SkuVariacao[]): TipoEmbalagem[] {
+  const mapa = new Map<string, TipoEmbalagem>();
+  for (const sku of skus) {
+    if (sku.tipos_embalagem) mapa.set(sku.tipos_embalagem.id, sku.tipos_embalagem);
+  }
+  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+// ── Query principal ────────────────────────────────────────────────
+
+export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
@@ -20,18 +54,12 @@ export async function getProductBySlug(
       base_price, images, benefits, how_to_use, nutrition, active,
       created_at, updated_at,
 
-      option_types (
-        id, product_id, name, label, sort_order,
-        option_values (
-          id, option_type_id, label, image_url, sort_order
-        )
-      ),
-
-      skus (
-        id, product_id, sku_code, price, stock, available, created_at,
-        sku_option_values (
-          option_value_id
-        )
+      skus_variacoes (
+        id, product_id, sabor_id, tamanho_id, tipo_embalagem_id,
+        sku_code, price, image_url, stock, available, created_at,
+        sabores ( id, nome ),
+        tamanhos ( id, nome ),
+        tipos_embalagem ( id, nome )
       )
     `)
     .eq('slug', slug)
@@ -39,34 +67,27 @@ export async function getProductBySlug(
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') return null;
+    if (error.code === 'PGRST116') return null; // nenhuma linha encontrada
     throw new Error(`[getProductBySlug] ${error.message}`);
   }
 
   if (!data) return null;
 
-  const sorted = {
-    ...data,
-    option_types: (data.option_types as OptionType[])
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(ot => ({
-        ...ot,
-        option_values: [...ot.option_values].sort(
-          (a, b) => a.sort_order - b.sort_order
-        ),
-      })),
-    skus: data.skus as SKU[],
-  };
+  const skus = (data.skus_variacoes ?? []) as unknown as SkuVariacao[];
 
-  return sorted as ProductWithVariants;
+  return {
+    ...data,
+    skus_variacoes: skus,
+    sabores_disponiveis: dedupSabores(skus),
+    tamanhos_disponiveis: dedupTamanhos(skus),
+    tipos_embalagem_disponiveis: dedupEmbalagens(skus),
+  } as ProductWithVariants;
 }
 
-// ── getAllProductSlugs — usa cliente SEM cookies (roda no build) ──
+// ── getAllProductSlugs — usa cliente SEM cookies (roda no build) ────
+// Sem alterações: continua consultando só a tabela "products",
+// que não foi tocada pela migração.
 
-/**
- * ⚠️ Usa createSupabaseStaticClient (sem cookies) porque é chamada
- * dentro de generateStaticParams, que roda em build-time.
- */
 export async function getAllProductSlugs(): Promise<string[]> {
   try {
     const supabase = createSupabaseStaticClient();
@@ -78,7 +99,6 @@ export async function getAllProductSlugs(): Promise<string[]> {
       .order('created_at', { ascending: true });
 
     if (error) {
-      // Loga mas não explode o build — páginas serão renderizadas dinamicamente
       console.warn(`[getAllProductSlugs] ${error.message}`);
       return [];
     }
@@ -90,11 +110,9 @@ export async function getAllProductSlugs(): Promise<string[]> {
   }
 }
 
-// ── getAllProducts ────────────────────────────────────────────────
+// ── getAllProducts ─────────────────────────────────────────────────
 
-export async function getAllProducts(
-  category?: string
-): Promise<ProductCard[]> {
+export async function getAllProducts(category?: string): Promise<ProductCard[]> {
   const supabase = await createSupabaseServerClient();
 
   let query = supabase
@@ -104,7 +122,7 @@ export async function getAllProducts(
       description, badge, brand_color, brand_initials,
       base_price, images, benefits, how_to_use, nutrition, active,
       created_at, updated_at,
-      skus ( price, stock, available )
+      skus_variacoes ( price, stock, available )
     `)
     .eq('active', true)
     .order('created_at', { ascending: true });
@@ -119,16 +137,16 @@ export async function getAllProducts(
 
   return (data ?? []).map(product => {
     type RawSku = { price: number | null; stock: number; available: boolean };
-    const skus = (product.skus as RawSku[]) ?? [];
+    const skus = (product.skus_variacoes as RawSku[]) ?? [];
 
     const availableSkus = skus.filter(s => s.available);
     const prices = availableSkus.map(s => s.price ?? product.base_price);
 
     return {
       ...product,
-      skus: undefined,
+      skus_variacoes: undefined,
       min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
       has_variants: skus.length > 1,
-    } as ProductCard;
+    } as unknown as ProductCard;
   });
 }

@@ -10,7 +10,7 @@
 //  Server Component: dados buscados no servidor, zero JS extra
 //  além dos dois Client Components importados.
 // ================================================================
-
+export const revalidate = 60;// Revalida a cada 60 segundos para atualizar dados sem rebuildar
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';

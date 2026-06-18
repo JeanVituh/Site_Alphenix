@@ -38,7 +38,7 @@ export function ProductHero({ product }: Props) {
   // Imagem injetada pelo VariantSelector quando sabor muda (opcional)
   const [imageOverride, setImageOverride] = useState<string | null>(null);
 
-  const hasVariants  = product.option_types.length > 0;
+  const hasVariants  = product.skus_variacoes?.length > 0;
   const hasMultiImg  = images.length > 1;
 
   // Imagem principal: override (sabor) > miniatura selecionada
