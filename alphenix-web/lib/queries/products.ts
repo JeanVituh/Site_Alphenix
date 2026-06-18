@@ -73,7 +73,13 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
 
   if (!data) return null;
 
-  const skus = (data.skus_variacoes ?? []) as unknown as SkuVariacao[];
+  const allSkus = (data.skus_variacoes ?? []) as unknown as SkuVariacao[];
+
+  // Regra de negócio:
+  // - available = true  → variação existe/vende e deve aparecer no site
+  // - available = false → variação desativada, cadastrada errada ou não vendida
+  // O estoque NÃO decide se a variação aparece. Stock 0 + available true vira encomenda.
+  const skus = allSkus.filter(sku => sku.available);
 
   return {
     ...data,
@@ -155,6 +161,11 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
 
 const skus = ((product.skus_variacoes ?? []) as unknown) as RawSku[];
 
+// Mostra na home apenas variações vendáveis.
+// Stock 0 continua vendável se available=true, pois vira encomenda.
+// available=false some do site, porque é variação desativada / inexistente.
+const skusAtivos = skus.filter(s => s.available);
+
 const getNomeEmbalagem = (sku: RawSku): string | null => {
   const embalagem = Array.isArray(sku.tipos_embalagem)
     ? sku.tipos_embalagem[0]
@@ -163,24 +174,24 @@ const getNomeEmbalagem = (sku: RawSku): string | null => {
   return embalagem?.nome ?? null;
 };
 
-const skusEmEstoque = skus.filter(s => s.stock > 0);
+const skusEmEstoque = skusAtivos.filter(s => s.stock > 0);
 
-const prices = skus.length > 0
-  ? skus.map(s => s.price ?? product.base_price)
+const prices = skusAtivos.length > 0
+  ? skusAtivos.map(s => s.price ?? product.base_price)
   : [product.base_price];
 
 const coverSku =
   skusEmEstoque.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
-  skus.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
+  skusAtivos.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
   skusEmEstoque.find(s => s.image_url) ??
-  skus.find(s => s.image_url) ??
+  skusAtivos.find(s => s.image_url) ??
   null;
   
 return {
   ...product,
   skus_variacoes: undefined,
   min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
-  has_variants: skus.length > 1,
+  has_variants: skusAtivos.length > 1,
   cover_image_url: coverSku?.image_url ?? product.images?.[0] ?? null,
 } as unknown as ProductCard;
 });

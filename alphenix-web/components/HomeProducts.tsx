@@ -19,7 +19,6 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProductCard } from '@/lib/types';
 import { CATEGORIES } from '@/lib/categories';
-import { getProductWaURL } from '@/lib/whatsapp';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -270,16 +269,14 @@ function ProductCardItem({
             <i className="fa-solid fa-eye" aria-hidden="true" />
             Mais Detalhes
           </Link>
-          <a
-            href={getProductWaURL({ name: product.name, brand: product.brand, price })}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href={`/produtos/${product.slug}`}
             className="btn btn--whatsapp"
-            aria-label={`Comprar ${product.name} pelo WhatsApp`}
+            aria-label={`Escolher variação de ${product.name}`}
           >
-            <i className="fa-brands fa-whatsapp" aria-hidden="true" />
-            Comprar pelo WhatsApp
-          </a>
+            <i className="fa-solid fa-cart-plus" aria-hidden="true" />
+            Escolher Variação
+          </Link>
         </div>
       </div>
     </article>

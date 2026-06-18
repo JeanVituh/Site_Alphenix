@@ -2,25 +2,13 @@
 // ================================================================
 //  ALPHENIX — Header (components/Header.tsx)
 //
-//  Recria header/nav/menu mobile do index.html original, agora
-//  como Client Component global (renderizado em app/layout.tsx,
-//  então aparece em TODAS as páginas — home e produto).
-//
-//  Funcionalidades portadas de main.js:
-//   • initHeader   → classe `scrolled` ao passar de 60px de scroll
-//   • initMobileMenu → abrir/fechar, fechar ao clicar fora ou Esc
-//   • initActiveNav → destaca o link da seção visível
-//
-//  O scroll suave até cada seção (#inicio, #produtos...) não
-//  depende mais de JS: o CSS já tem `scroll-behavior: smooth`
-//  (base.css) — só falta adicionar `scroll-margin-top` nessas
-//  seções para compensar a altura do header fixo. Isso está
-//  explicado na mensagem, é um adicional pequeno no CSS.
+//  Header/nav/menu mobile global + botão de carrinho sempre visível.
 // ================================================================
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { CartButton } from '@/components/cart/CartButton';
 
 const NAV_LINKS = [
   { href: '/#inicio',   label: 'Início',       id: 'inicio'   },
@@ -116,6 +104,9 @@ export function Header() {
         </nav>
 
         <div className="header__actions">
+          {/* Carrinho sempre visível no header, inclusive no mobile */}
+          <CartButton />
+
           <Link
             href="/#produtos"
             className="btn btn--primary header__cta"
@@ -161,6 +152,9 @@ export function Header() {
             ))}
           </ul>
         </nav>
+
+        <CartButton variant="menu" onClick={() => setMenuOpen(false)} />
+
         <Link
           href="/#produtos"
           className="btn btn--primary mobile-menu__cta"

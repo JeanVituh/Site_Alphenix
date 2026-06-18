@@ -1,5 +1,5 @@
 // ================================================================
-//  ALPHENIX — app/layout.tsx (com Header, Footer e Loader globais)
+//  ALPHENIX — app/layout.tsx (com Header, Footer, Loader e Carrinho)
 // ================================================================
 
 import type { Metadata } from 'next';
@@ -7,6 +7,7 @@ import { RevealAnimations } from '@/components/RevealAnimations';
 import { Loader } from '@/components/Loader';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { CartRoot } from '@/components/cart/CartRoot';
 
 // ─── IMPORTAÇÃO CORRETA DOS ARQUIVOS CSS ───
 import '@/public/assets/css/variables.css';
@@ -46,30 +47,32 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {/*
-          Loader: mostra a tela de carregamento e, ao final,
-          adiciona a classe `loaded` ao <body> — é o que libera
-          a visibilidade do <main> e do <header> (regra em
-          components.css). Precisa vir ANTES de Header/children.
-        */}
-        <Loader />
+        <CartRoot>
+          {/*
+            Loader: mostra a tela de carregamento e, ao final,
+            adiciona a classe `loaded` ao <body> — é o que libera
+            a visibilidade do <main> e do <header> (regra em
+            components.css). Precisa vir ANTES de Header/children.
+          */}
+          <Loader />
 
-        {/* Header global: aparece em todas as páginas */}
-        <Header />
+          {/* Header global: aparece em todas as páginas */}
+          <Header />
 
-        {children}
+          {children}
 
-        {/* Footer global: aparece em todas as páginas */}
-        <Footer />
+          {/* Footer global: aparece em todas as páginas */}
+          <Footer />
 
-        {/*
-          RevealAnimations: ativa .reveal → .visible via IntersectionObserver
-          para as seções estáticas (hero, features, cta-banner etc).
-          A grade de produtos da home tem seu próprio observer interno
-          (ver components/HomeProducts.tsx), pois os cards mudam
-          dinamicamente com busca/filtro.
-        */}
-        <RevealAnimations />
+          {/*
+            RevealAnimations: ativa .reveal → .visible via IntersectionObserver
+            para as seções estáticas (hero, features, cta-banner etc).
+            A grade de produtos da home tem seu próprio observer interno
+            (ver components/HomeProducts.tsx), pois os cards mudam
+            dinamicamente com busca/filtro.
+          */}
+          <RevealAnimations />
+        </CartRoot>
       </body>
     </html>
   );

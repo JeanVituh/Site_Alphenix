@@ -143,53 +143,96 @@
   border:        1px solid rgba(255, 69, 0, 0.3);
 }
 
-/* ── Botão CTA WhatsApp ──────────────────────────────────────── */
+/* ── Badges de status e preço ────────────────────────────────── */
+.badgeReady,
+.badgeOrder {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badgeReady {
+  color: #120a05;
+  background: var(--clr-orange);
+  border: 1px solid transparent;
+}
+
+.badgeOrder {
+  color: var(--clr-orange);
+  background: rgba(255, 138, 31, 0.12);
+  border: 1px solid rgba(255, 138, 31, 0.3);
+}
+
+.priceHint {
+  color: var(--clr-text-md);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+/* ── Botão CTA Carrinho ──────────────────────────────────────── */
 .ctaBtn {
-  display:         flex;
-  align-items:     center;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  gap:             var(--sp-2);
-  width:           100%;
-  padding:         14px 24px;
-  font-family:     var(--font-body);
-  font-size:       var(--text-base);
-  font-weight:     700;
-  letter-spacing:  0.04em;
-  text-transform:  uppercase;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 14px 24px;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   text-decoration: none;
-  color:           #fff;
-  background:      var(--clr-whatsapp);
-  border:          2px solid transparent;
-  border-radius:   var(--radius-sm);
-  cursor:          pointer;
+  color: #120a05;
+  background: var(--grad-primary, linear-gradient(135deg, #ff8a1f, #ffd18a));
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
   transition:
-    background  var(--t-base) var(--ease-out),
-    transform   var(--t-fast) var(--ease-out),
-    box-shadow  var(--t-base) var(--ease-out);
-  animation: glowRingPulse 2.5s ease-in-out infinite;
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-base) var(--ease-out),
+    filter var(--t-base) var(--ease-out);
+  box-shadow: var(--shadow-glow-sm);
 }
 
 .ctaBtn:hover:not(.ctaBtnDisabled) {
-  background: var(--clr-whatsapp-dk);
-  transform:  translateY(-2px);
-  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.35);
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-glow-md, 0 12px 34px rgba(255, 138, 31, 0.28));
 }
 
 .ctaBtn:active:not(.ctaBtnDisabled) {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
-/* ── CTA desabilitado (combinação esgotada) ──────────────────── */
+.ctaBtnOrder {
+  color: var(--clr-orange);
+  background: rgba(255, 138, 31, 0.12);
+  border-color: rgba(255, 138, 31, 0.34);
+  box-shadow: none;
+}
+
+.ctaBtnOrder:hover:not(.ctaBtnDisabled) {
+  background: rgba(255, 138, 31, 0.18);
+}
+
+/* ── CTA desabilitado (combinação indisponível) ───────────────── */
 .ctaBtnDisabled {
-  background:  var(--clr-bg-elevated);
-  color:       var(--clr-text-xs);
+  background: var(--clr-bg-elevated);
+  color: var(--clr-text-xs);
   border-color: var(--clr-border);
-  cursor:      not-allowed;
-  animation:   none;
+  cursor: not-allowed;
+  animation: none;
+  box-shadow: none;
 }
 
 .ctaBtnDisabled:hover {
-  transform:  none;
+  transform: none;
   box-shadow: none;
 }
 

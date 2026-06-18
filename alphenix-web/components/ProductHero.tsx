@@ -12,7 +12,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { VariantSelector } from './VariantSelector';
 import type { ProductWithVariants, CtaStatus } from '@/lib/types';
-import { WHATSAPP_NUMBER, getProductWaURL } from '@/lib/whatsapp';
+import { getProductWaURL } from '@/lib/whatsapp';
 
 // ── Helper ───────────────────────────────────────────────────────
 function assetUrl(path: string): string {
@@ -39,11 +39,15 @@ export function ProductHero({ product }: Props) {
   // Isso serve como imagem inicial da página.
 
 const initialSkuImage = useMemo(() => {
-  const skuPoteComImagem = product.skus_variacoes?.find(
+  // Só considera variações vendáveis.
+  // available=false = desativada/inexistente; não deve puxar imagem nem entrar na seleção.
+  const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];
+
+  const skuPoteComImagem = skusVisiveis.find(
     sku => sku.tipos_embalagem?.nome === 'Pote' && sku.image_url
   );
 
-  const qualquerSkuComImagem = product.skus_variacoes?.find(
+  const qualquerSkuComImagem = skusVisiveis.find(
     sku => sku.image_url
   );
 
@@ -129,7 +133,8 @@ const initialSkuImage = useMemo(() => {
   const [variantPrice, setVariantPrice] = useState(product.base_price);
 
   const [variantStatus, setVariantStatus] = useState<CtaStatus>(() => {
-    const firstSku = product.skus_variacoes?.[0] ?? null;
+    const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];
+    const firstSku = skusVisiveis.find(sku => sku.stock > 0) ?? skusVisiveis[0] ?? null;
 
     if (!product.skus_variacoes?.length) return 'comprar';
     if (!firstSku) return 'indisponivel';
@@ -146,7 +151,7 @@ const initialSkuImage = useMemo(() => {
   );
 
   const displayPrice = hasVariants ? variantPrice : product.base_price;
-  const shouldShowPrice = hasVariants ? variantStatus === 'comprar' : true;
+  const shouldShowPrice = hasVariants ? variantStatus !== 'indisponivel' : true;
 
   // ── Preço base formatado ─────────────────────────────────────
   const [priceInt, priceDec] = displayPrice.toFixed(2).split('.');
@@ -279,7 +284,7 @@ const initialSkuImage = useMemo(() => {
               </span>
             </div>
 
-            {/* Preço: aparece somente quando tem estoque */}
+            {/* Preço: aparece para pronta entrega e encomenda; só some quando a combinação é indisponível */}
             {shouldShowPrice && (
               <div className="pdp-price-block">
                 <div className="pdp-price">
@@ -290,7 +295,7 @@ const initialSkuImage = useMemo(() => {
                 </div>
 
                 <p className="pdp-price__note">
-                  Consulte condições de pagamento e entrega pelo WhatsApp
+                  Total estimado. Confirme disponibilidade, prazo e pagamento no WhatsApp
                 </p>
               </div>
             )}
@@ -304,7 +309,6 @@ const initialSkuImage = useMemo(() => {
             {hasVariants ? (
               <VariantSelector
                 product={product}
-                whatsappNumber={WHATSAPP_NUMBER}
                 onImageChange={handleImageChange}
                 onVariantChange={handleVariantChange}
               />
