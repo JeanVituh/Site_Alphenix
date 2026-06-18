@@ -38,10 +38,17 @@ export function ProductHero({ product }: Props) {
   // Pega a primeira imagem principal disponível em skus_variacoes.image_url
   // Isso serve como imagem inicial da página.
 
+const initialSkuImage = useMemo(() => {
+  const skuPoteComImagem = product.skus_variacoes?.find(
+    sku => sku.tipos_embalagem?.nome === 'Pote' && sku.image_url
+  );
 
-  const initialSkuImage = useMemo(() => {
-    return product.skus_variacoes?.find(sku => sku.image_url)?.image_url ?? null;
-  }, [product.skus_variacoes]);
+  const qualquerSkuComImagem = product.skus_variacoes?.find(
+    sku => sku.image_url
+  );
+
+  return skuPoteComImagem?.image_url ?? qualquerSkuComImagem?.image_url ?? null;
+}, [product.skus_variacoes]);
 
   const [skuMainImage, setSkuMainImage] = useState<string | null>(
     () => initialSkuImage ? assetUrl(initialSkuImage) : null

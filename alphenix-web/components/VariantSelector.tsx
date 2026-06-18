@@ -126,39 +126,82 @@ export function VariantSelector({
   //   daquela combinação específica esteja zerado (decidimos
   //   "comprar" vs "encomenda" depois, com base no currentSku).
   const disponibilidade = useMemo<OptionAvailability>(() => {
-    const usaSabor = product.sabores_disponiveis.length > 0;
-    const usaTamanho = product.tamanhos_disponiveis.length > 0;
-    const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
+  const skusValidos = product.skus_variacoes;
 
-    const sabor: Record<string, boolean> = {};
-    for (const s of product.sabores_disponiveis) {
-      sabor[s.id] = product.skus_variacoes.some(sku =>
-        sku.sabor_id === s.id &&
-        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
-        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
-      );
-    }
+  const usaTamanho = product.tamanhos_disponiveis.length > 0;
+  const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
 
-    const tamanho: Record<string, boolean> = {};
-    for (const t of product.tamanhos_disponiveis) {
-      tamanho[t.id] = product.skus_variacoes.some(sku =>
-        sku.tamanho_id === t.id &&
-        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
-        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
-      );
-    }
+  const sabor: Record<string, boolean> = {};
 
-    const embalagem: Record<string, boolean> = {};
-    for (const e of product.tipos_embalagem_disponiveis) {
-      embalagem[e.id] = product.skus_variacoes.some(sku =>
-        sku.tipo_embalagem_id === e.id &&
-        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
-        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null))
-      );
-    }
+  for (const s of product.sabores_disponiveis) {
+    sabor[s.id] = skusValidos.some(sku =>
+      sku.sabor_id === s.id &&
 
-    return { sabor, tamanho, embalagem };
-  }, [selectedValues, product]);
+      // Sabor depende do tamanho selecionado
+      (!usaTamanho ||
+        !selectedValues.tamanhoId ||
+        sku.tamanho_id === selectedValues.tamanhoId) &&
+
+      // Sabor depende da embalagem selecionada
+      (!usaEmbalagem ||
+        !selectedValues.embalagemId ||
+        sku.tipo_embalagem_id === selectedValues.embalagemId)
+    );
+  }
+
+  const tamanho: Record<string, boolean> = {};
+
+  for (const t of product.tamanhos_disponiveis) {
+    // Tamanho fica clicável se existir em qualquer SKU do produto
+    tamanho[t.id] = skusValidos.some(
+      sku => sku.tamanho_id === t.id
+    );
+  }
+
+  const embalagem: Record<string, boolean> = {};
+
+  for (const e of product.tipos_embalagem_disponiveis) {
+    // Embalagem fica clicável se existir em qualquer SKU do produto
+    embalagem[e.id] = skusValidos.some(
+      sku => sku.tipo_embalagem_id === e.id
+    );
+  }
+
+  return { sabor, tamanho, embalagem };
+}, [
+  product,
+  selectedValues.tamanhoId,
+  selectedValues.embalagemId,
+]);
+
+const visibleSabores = useMemo(() => {
+  return product.sabores_disponiveis.filter(
+    sabor => disponibilidade.sabor[sabor.id] ?? false
+  );
+}, [product.sabores_disponiveis, disponibilidade.sabor]);
+
+useEffect(() => {
+  if (product.sabores_disponiveis.length === 0) return;
+
+  const saborAtualAindaExiste = visibleSabores.some(
+    sabor => sabor.id === selectedValues.saborId
+  );
+
+  if (saborAtualAindaExiste) return;
+
+  const primeiroSaborVisivel = visibleSabores[0];
+
+  if (!primeiroSaborVisivel) return;
+
+  setSelectedValues(prev => ({
+    ...prev,
+    saborId: primeiroSaborVisivel.id,
+  }));
+}, [
+  product.sabores_disponiveis.length,
+  selectedValues.saborId,
+  visibleSabores,
+]);
 
 
   // ── LÓGICA 3: Preço e status do CTA ─────────────────────────────
@@ -173,11 +216,44 @@ export function VariantSelector({
 
   // ── Handler: ao clicar em uma opção ──────────────────────────
   const handleSelect = useCallback(
-    (dimensao: keyof SelectedValues, valueId: string) => {
-      setSelectedValues(prev => ({ ...prev, [dimensao]: valueId }));
-    },
-    []
-  );
+  (dimensao: keyof SelectedValues, valueId: string) => {
+    setSelectedValues(prev => {
+      const next = { ...prev, [dimensao]: valueId };
+
+      const usaSabor = product.sabores_disponiveis.length > 0;
+      const usaTamanho = product.tamanhos_disponiveis.length > 0;
+      const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
+
+      const exactSku = product.skus_variacoes.find(sku =>
+        (!usaSabor || sku.sabor_id === (next.saborId ?? null)) &&
+        (!usaTamanho || sku.tamanho_id === (next.tamanhoId ?? null)) &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (next.embalagemId ?? null))
+      );
+
+      if (exactSku) {
+        return next;
+      }
+
+      const fallbackSku = product.skus_variacoes.find(sku => {
+        if (dimensao === 'saborId') return sku.sabor_id === valueId;
+        if (dimensao === 'tamanhoId') return sku.tamanho_id === valueId;
+        if (dimensao === 'embalagemId') return sku.tipo_embalagem_id === valueId;
+        return false;
+      });
+
+      if (!fallbackSku) {
+        return next;
+      }
+
+      return {
+        saborId: fallbackSku.sabor_id ?? undefined,
+        tamanhoId: fallbackSku.tamanho_id ?? undefined,
+        embalagemId: fallbackSku.tipo_embalagem_id ?? undefined,
+      };
+    });
+  },
+  [product]
+);
 
 
   // ── Trocar a foto da galeria quando o SKU resolvido tiver uma ──
@@ -240,7 +316,7 @@ export function VariantSelector({
           </p>
 
           <div className={styles.options} role="group" aria-label="Selecionar Sabor">
-            {product.sabores_disponiveis.map(sabor => {
+            {visibleSabores.map(sabor => {
               const isSelected = selectedValues.saborId === sabor.id;
               const isAvailable = disponibilidade.sabor[sabor.id] ?? false;
 
@@ -284,8 +360,11 @@ export function VariantSelector({
 
           <div className={styles.options} role="group" aria-label="Selecionar Tamanho">
             {product.tamanhos_disponiveis.map(tamanho => {
-              const isSelected = selectedValues.tamanhoId === tamanho.id;
-              const isAvailable = disponibilidade.tamanho[tamanho.id] ?? false;
+  const isSelected = selectedValues.tamanhoId === tamanho.id;
+
+  const isAvailable = product.skus_variacoes.some(
+    sku => sku.tamanho_id === tamanho.id
+  );
 
               return (
                 <button
@@ -327,8 +406,11 @@ export function VariantSelector({
 
           <div className={styles.options} role="group" aria-label="Selecionar Embalagem">
             {product.tipos_embalagem_disponiveis.map(embalagem => {
-              const isSelected = selectedValues.embalagemId === embalagem.id;
-              const isAvailable = disponibilidade.embalagem[embalagem.id] ?? false;
+  const isSelected = selectedValues.embalagemId === embalagem.id;
+
+  const isAvailable = product.skus_variacoes.some(
+    sku => sku.tipo_embalagem_id === embalagem.id
+  );
 
               return (
                 <button

@@ -122,7 +122,13 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
       description, badge, brand_color, brand_initials,
       base_price, images, benefits, how_to_use, nutrition, active,
       created_at, updated_at,
-      skus_variacoes ( price, stock, available, image_url )
+      skus_variacoes (
+  price,
+  stock,
+  available,
+  image_url,
+  tipos_embalagem ( nome )
+)
     `)
     .eq('active', true)
     .order('created_at', { ascending: true });
@@ -137,28 +143,45 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
 
   return (data ?? []).map(product => {
   type RawSku = {
-    price: number | null;
-    stock: number;
-    available: boolean;
-    image_url: string | null;
-  };
+  price: number | null;
+  stock: number;
+  available: boolean;
+  image_url: string | null;
 
-  const skus = (product.skus_variacoes as RawSku[]) ?? [];
+  // O Supabase/TypeScript pode entender relacionamento como array,
+  // então aceitamos os dois formatos.
+  tipos_embalagem: { nome: string }[] | { nome: string } | null;
+};
 
-  const availableSkus = skus.filter(s => s.available);
-  const prices = availableSkus.map(s => s.price ?? product.base_price);
+const skus = ((product.skus_variacoes ?? []) as unknown) as RawSku[];
 
-  const coverSku =
-    availableSkus.find(s => s.image_url) ??
-    skus.find(s => s.image_url) ??
-    null;
+const getNomeEmbalagem = (sku: RawSku): string | null => {
+  const embalagem = Array.isArray(sku.tipos_embalagem)
+    ? sku.tipos_embalagem[0]
+    : sku.tipos_embalagem;
 
-  return {
-    ...product,
-    skus_variacoes: undefined,
-    min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
-    has_variants: skus.length > 1,
-    cover_image_url: coverSku?.image_url ?? product.images?.[0] ?? null,
-  } as unknown as ProductCard;
+  return embalagem?.nome ?? null;
+};
+
+const skusEmEstoque = skus.filter(s => s.stock > 0);
+
+const prices = skus.length > 0
+  ? skus.map(s => s.price ?? product.base_price)
+  : [product.base_price];
+
+const coverSku =
+  skusEmEstoque.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
+  skus.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
+  skusEmEstoque.find(s => s.image_url) ??
+  skus.find(s => s.image_url) ??
+  null;
+  
+return {
+  ...product,
+  skus_variacoes: undefined,
+  min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
+  has_variants: skus.length > 1,
+  cover_image_url: coverSku?.image_url ?? product.images?.[0] ?? null,
+} as unknown as ProductCard;
 });
 }
