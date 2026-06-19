@@ -35,6 +35,13 @@ function getSellableSkus(product: ProductWithVariants): SkuVariacao[] {
   return product.skus_variacoes.filter(sku => sku.available);
 }
 
+function formatPrice(value: number): string {
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).replace(/\u00A0/g, ' ');
+}
+
 /**
  * Monta a seleção inicial usando somente SKUs vendáveis.
  * Prioriza pronta entrega, mas aceita SKU sem estoque para encomenda.
@@ -170,6 +177,7 @@ export function VariantSelector({
 
   // ── LÓGICA 3: Preço e status do CTA ─────────────────────────────
   const currentPrice = currentSku?.price ?? product.base_price;
+  const currentPriceLabel = formatPrice(currentPrice);
 
   const statusCta: CtaStatus = !currentSku || !currentSku.available
     ? 'indisponivel'
@@ -416,6 +424,12 @@ export function VariantSelector({
           <span className={statusCta === 'comprar' ? styles.badgeReady : styles.badgeOrder}>
             {statusCta === 'comprar' ? 'Pronta entrega' : 'Encomenda'}
           </span>
+
+          {statusCta === 'encomenda' && (
+            <span className={styles.priceHint}>
+              Estimativa: {currentPriceLabel}
+            </span>
+          )}
         </div>
       )}
 

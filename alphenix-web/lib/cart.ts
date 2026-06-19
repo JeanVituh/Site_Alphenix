@@ -45,7 +45,7 @@ export function formatCurrencyBR(value: number): string {
   return value.toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
-  });
+  }).replace(/\u00A0/g, ' ');
 }
 
 export function getCartItemSubtotal(item: CartItem): number {
@@ -70,17 +70,23 @@ export function getVariationLabel(item: Pick<CartItem, 'sabor' | 'tamanho' | 'em
     .join(' - ');
 }
 
-function buildWhatsappLine(item: CartItem): string {
-  const parts = [
-    item.productName,
-    item.brand,
-    item.sabor,
-    item.tamanho,
-    item.embalagem,
-    formatCurrencyBR(item.unitPrice),
-  ].filter((value): value is string => Boolean(value && value.trim()));
+function buildWhatsappItemBlock(item: CartItem): string {
+  const headerParts = [item.productName, item.brand]
+    .filter((value): value is string => Boolean(value && value.trim()));
 
-  return `${item.quantity}x ${parts.join(' - ')}`;
+  const lines = [
+    `${item.quantity}x ${headerParts.join(' - ')}`,
+    item.sabor ? `Sabor: ${item.sabor}` : null,
+    item.tamanho ? `Tamanho: ${item.tamanho}` : null,
+    item.embalagem ? `Embalagem: ${item.embalagem}` : null,
+    item.quantity > 1
+      ? `Valor: ${formatCurrencyBR(item.unitPrice)} cada | Subtotal: ${formatCurrencyBR(getCartItemSubtotal(item))}`
+      : `Valor: ${formatCurrencyBR(item.unitPrice)}`,
+  ];
+
+  return lines
+    .filter((line): line is string => Boolean(line && line.trim()))
+    .join('\n');
 }
 
 export function buildCartWhatsappMessage(items: CartItem[]): string {
@@ -93,14 +99,14 @@ export function buildCartWhatsappMessage(items: CartItem[]): string {
   ];
 
   if (prontaEntrega.length > 0) {
-    message.push('🛒 PRODUTOS À PRONTA ENTREGA:');
-    message.push(...prontaEntrega.map(buildWhatsappLine));
+    message.push('🛒 PRODUTOS À PRONTA ENTREGA:', '');
+    message.push(prontaEntrega.map(buildWhatsappItemBlock).join('\n\n'));
     message.push('');
   }
 
   if (encomenda.length > 0) {
-    message.push('📦 PRODUTOS PARA ENCOMENDA:');
-    message.push(...encomenda.map(buildWhatsappLine));
+    message.push('📦 PRODUTOS PARA ENCOMENDA:', '');
+    message.push(encomenda.map(buildWhatsappItemBlock).join('\n\n'));
     message.push('');
   }
 

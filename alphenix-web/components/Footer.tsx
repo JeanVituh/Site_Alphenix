@@ -37,9 +37,9 @@ export function Footer() {
             </p>
             <div className="footer__social" aria-label="Redes sociais">
               <a
-                href="#"
+                href="https://www.instagram.com/alphenix.fit/"
                 className="footer__social-link"
-                aria-label="Instagram"
+                aria-label="Instagram da ALPHENIX"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -53,15 +53,6 @@ export function Footer() {
                 rel="noopener noreferrer"
               >
                 <i className="fa-brands fa-whatsapp" aria-hidden="true" />
-              </a>
-              <a
-                href="#"
-                className="footer__social-link"
-                aria-label="TikTok"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <i className="fa-brands fa-tiktok" aria-hidden="true" />
               </a>
             </div>
           </div>

@@ -114,10 +114,11 @@
 
 /* ── Linha de preço ──────────────────────────────────────────── */
 .priceRow {
-  display:     flex;
+  display: flex;
   align-items: center;
-  gap:         var(--sp-3);
-  margin-top:  var(--sp-2);
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
 }
 
 .price {
@@ -169,9 +170,16 @@
 }
 
 .priceHint {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
   color: var(--clr-text-md);
   font-size: var(--text-sm);
-  font-weight: 700;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-full);
 }
 
 /* ── Botão CTA Carrinho ──────────────────────────────────────── */
@@ -252,6 +260,12 @@
 
   .optionBtn {
     padding:   6px 12px;
+    font-size: var(--text-xs);
+  }
+
+  .priceHint {
+    width: 100%;
+    justify-content: center;
     font-size: var(--text-xs);
   }
 }

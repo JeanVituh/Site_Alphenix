@@ -60,18 +60,18 @@ export default async function HomePage() {
 
             <div className="hero__stats reveal reveal-delay-4" aria-label="Números da Alphenix">
               <div className="hero__stat">
-                <span className="hero__stat-value text-gradient">Melhores Preços</span>
-                <span className="hero__stat-label">Da Região</span>
+                <span className="hero__stat-value text-gradient">Preço Justo</span>
+                <span className="hero__stat-label">Na Região</span>
               </div>
               <div className="hero__stat-sep" aria-hidden="true" />
               <div className="hero__stat">
-                <span className="hero__stat-value text-gradient">Os Melhores</span>
-                <span className="hero__stat-label">Produtos</span>
+                <span className="hero__stat-value text-gradient">Marcas Top</span>
+                <span className="hero__stat-label">Selecionadas</span>
               </div>
               <div className="hero__stat-sep" aria-hidden="true" />
               <div className="hero__stat">
-                <span className="hero__stat-value text-gradient">100%</span>
-                <span className="hero__stat-label">Originais</span>
+                <span className="hero__stat-value text-gradient">100% Original</span>
+                <span className="hero__stat-label">Lacrado</span>
               </div>
             </div>
           </div>

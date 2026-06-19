@@ -748,7 +748,9 @@
 .product-card__price {
   display: flex;
   align-items: baseline;
+  justify-content: flex-start;
   gap: 4px;
+  min-width: 0;
 }
 
 .product-card__price-currency {
@@ -774,20 +776,31 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
+  min-width: 0;
+}
+
+.product-card__actions .btn {
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* "Mais Detalhes" outlined button */
 .btn--details {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   background: transparent;
   color: var(--clr-text-sm);
   border: 1px solid var(--clr-border);
   padding: 10px 16px;
   font-size: var(--text-sm);
   font-weight: 700;
+  line-height: 1.15;
   border-radius: var(--radius-sm);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -800,6 +813,10 @@
   text-decoration: none;
   cursor: pointer;
   font-family: var(--font-body);
+}
+
+.btn--details i {
+  flex: 0 0 auto;
 }
 
 .btn--details:hover {
@@ -1133,6 +1150,7 @@
 
 .footer__social {
   display: flex;
+  align-items: center;
   gap: var(--sp-2);
 }
 
@@ -1359,6 +1377,31 @@ body.loaded .header {
     gap: var(--sp-4);
   }
 
+  .product-card__body {
+    padding: var(--sp-4);
+  }
+
+  .product-card__footer {
+    padding: var(--sp-3) var(--sp-4) var(--sp-4);
+    align-items: stretch;
+  }
+
+  .product-card__price {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .product-card__price-value {
+    font-size: clamp(2rem, 8vw, 2.35rem);
+  }
+
+  .btn--details {
+    padding: 9px 8px;
+    font-size: 0.68rem;
+    letter-spacing: 0.025em;
+    gap: 6px;
+  }
+
   /* WhatsApp button: fonte menor e garante quebra de linha em cards estreitos */
   .product-card__actions .btn--whatsapp {
     font-size: var(--text-xs);
@@ -1450,6 +1493,30 @@ body.loaded .header {
   .footer__brand {
     grid-column: 1;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer__logo-link {
+    margin-inline: auto;
+  }
+
+  .footer__social {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .footer__nav-col {
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer__nav-list {
+    align-items: center;
+  }
+
+  .footer__wa-link {
+    justify-content: center;
   }
 
   .footer__bottom-inner {
@@ -1468,12 +1535,35 @@ body.loaded .header {
     height: 200px;
   }
 
-  /* Hero stats: grid de 3 colunas iguais em vez de flex row */
+  /* Títulos de seção no mobile: mais premium e menos “espremido” */
+  .section-title {
+    font-size: clamp(2.75rem, 11vw, 3.8rem);
+    letter-spacing: 0.012em;
+    line-height: 1.02;
+  }
+
+  .section-eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+  }
+
+  .section-subtitle {
+    font-size: 1rem;
+    line-height: 1.65;
+    max-width: 360px;
+  }
+
+  /* Hero stats: 3 colunas iguais, centralizadas e com espaço para a seta */
   .hero__stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--sp-3);
-    max-width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-items: center;
+    align-items: center;
+    gap: var(--sp-2);
+    width: min(100%, 380px);
+    max-width: 380px;
+    margin-inline: auto;
+    margin-bottom: var(--sp-10);
     border-top: 1px solid var(--clr-border);
     padding-top: var(--sp-4);
   }
@@ -1483,21 +1573,32 @@ body.loaded .header {
     display: none;
   }
 
-  /* Centraliza cada stat e reduz fonte */
+  /* Centraliza cada stat e impede que uma coluna empurre a outra */
   .hero__stat {
     align-items: center;
     text-align: center;
+    min-width: 0;
+    width: 100%;
   }
 
   .hero__stat-value {
-    font-size: var(--text-lg);   /* 1.125rem ≈ 18px — cabe em 3 colunas */
-    letter-spacing: 0.02em;
+    font-size: clamp(0.95rem, 3.6vw, 1.08rem);
+    letter-spacing: 0.015em;
     line-height: 1.1;
+    text-align: center;
   }
 
   .hero__stat-label {
-    font-size: 0.6rem;
+    font-size: 0.56rem;
     letter-spacing: 0.08em;
+    text-align: center;
+  }
+
+  .hero__scroll {
+    left: 50%;
+    right: auto;
+    bottom: var(--sp-5);
+    transform: translateX(-50%);
   }
 }
 
@@ -1512,11 +1613,22 @@ body.loaded .header {
   }
 
   /* Em telas muito pequenas, reduz ainda mais */
+  .hero__stats {
+    gap: 6px;
+  }
+
   .hero__stat-value {
-    font-size: var(--text-base);   /* 1rem ≈ 16px */
+    font-size: 0.92rem;
+    letter-spacing: 0.025em;
   }
 
   .hero__stat-label {
-    font-size: 0.55rem;
+    font-size: 0.5rem;
+    letter-spacing: 0.075em;
+  }
+
+  .btn--details {
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
   }
 }

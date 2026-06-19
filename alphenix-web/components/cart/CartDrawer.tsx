@@ -249,9 +249,6 @@ function CartDrawerItem({
           <span className={item.fulfillment === 'pronta_entrega' ? styles.badgeReady : styles.badgeOrder}>
             {getFulfillmentLabel(item.fulfillment)}
           </span>
-          {item.fulfillment === 'pronta_entrega' && item.stock > 0 && (
-            <span className={styles.badgeStock}>Estoque: {item.stock}</span>
-          )}
         </div>
 
         <div className={styles.cartItemBottom}>
