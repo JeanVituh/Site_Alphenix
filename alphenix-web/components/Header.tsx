@@ -61,22 +61,73 @@ export function Header() {
     };
   }, [menuOpen]);
 
-  // ── Destaca o link da seção visível (recalcula por rota,
-  //     já que a página de produto não tem essas seções) ──────
+  // ── Destaca o link correto do menu conforme a seção atual.
+  //    A versão anterior usava IntersectionObserver e, em alguns casos,
+  //    o link ficava preso na aba anterior depois do clique em âncoras
+  //    como /#produtos ou /#contato. Aqui o estado é atualizado no clique
+  //    e também sincronizado pelo scroll.
   useEffect(() => {
-    const sections = document.querySelectorAll('section[id], footer[id]');
-    if (!sections.length) return;
+    if (pathname !== '/') {
+      setActiveId('inicio');
+      return;
+    }
 
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActiveId(entry.target.id);
-        });
-      },
-      { threshold: 0.25 }
-    );
-    sections.forEach((s) => obs.observe(s));
-    return () => obs.disconnect();
+    let frameId: number | null = null;
+
+    function syncActiveSection() {
+      const headerOffset = headerRef.current?.offsetHeight ?? 0;
+      const scrollPoint = window.scrollY + headerOffset + 96;
+      let currentId = 'inicio';
+
+      for (const link of NAV_LINKS) {
+        const section = document.getElementById(link.id);
+        if (!section) continue;
+
+        if (section.offsetTop <= scrollPoint) {
+          currentId = link.id;
+        }
+      }
+
+      const isNearBottom =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 80;
+
+      if (isNearBottom) {
+        currentId = 'contato';
+      }
+
+      setActiveId(currentId);
+    }
+
+    function scheduleSync() {
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(syncActiveSection);
+    }
+
+    function onHashChange() {
+      const hashId = window.location.hash.replace('#', '');
+      const matchingLink = NAV_LINKS.find((link) => link.id === hashId);
+
+      if (matchingLink) {
+        setActiveId(matchingLink.id);
+      }
+
+      window.setTimeout(scheduleSync, 80);
+    }
+
+    scheduleSync();
+    window.setTimeout(scheduleSync, 120);
+
+    window.addEventListener('scroll', scheduleSync, { passive: true });
+    window.addEventListener('resize', scheduleSync);
+    window.addEventListener('hashchange', onHashChange);
+
+    return () => {
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+      window.removeEventListener('scroll', scheduleSync);
+      window.removeEventListener('resize', scheduleSync);
+      window.removeEventListener('hashchange', onHashChange);
+    };
   }, [pathname]);
 
   return (
@@ -94,7 +145,10 @@ export function Header() {
                 <Link
                   href={link.href}
                   className={`nav__link${activeId === link.id ? ' active' : ''}`}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    setActiveId(link.id);
+                    setMenuOpen(false);
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -110,7 +164,10 @@ export function Header() {
           <Link
             href="/#produtos"
             className="btn btn--primary header__cta"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => {
+              setActiveId('produtos');
+              setMenuOpen(false);
+            }}
           >
             <i className="fa-solid fa-bolt" aria-hidden="true" />
             Ver Produtos
@@ -144,7 +201,10 @@ export function Header() {
                 <Link
                   href={link.href}
                   className="mobile-menu__link"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    setActiveId(link.id);
+                    setMenuOpen(false);
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -158,7 +218,10 @@ export function Header() {
         <Link
           href="/#produtos"
           className="btn btn--primary mobile-menu__cta"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => {
+            setActiveId('produtos');
+            setMenuOpen(false);
+          }}
         >
           <i className="fa-solid fa-bolt" aria-hidden="true" />
           Ver Produtos
