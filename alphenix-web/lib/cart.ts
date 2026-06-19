@@ -6,6 +6,13 @@
 // ================================================================
 
 import { getWaURL } from '@/lib/whatsapp';
+import {
+  calculatePaymentDiscount,
+  getPaymentDiscountPercent,
+  getPaymentMethodLabel,
+  roundCurrency,
+  type PaymentMethod,
+} from '@/lib/payment';
 
 export type CartFulfillment = 'pronta_entrega' | 'encomenda';
 
@@ -41,6 +48,13 @@ export interface CartAddInput {
   available: boolean;
 }
 
+export interface CartTotals {
+  subtotal: number;
+  discountPercent: number;
+  discount: number;
+  total: number;
+}
+
 export function formatCurrencyBR(value: number): string {
   return value.toLocaleString('pt-BR', {
     style: 'currency',
@@ -54,6 +68,22 @@ export function getCartItemSubtotal(item: CartItem): number {
 
 export function getCartTotal(items: CartItem[]): number {
   return items.reduce((total, item) => total + getCartItemSubtotal(item), 0);
+}
+
+export function getCartTotals(
+  items: CartItem[],
+  paymentMethod: PaymentMethod
+): CartTotals {
+  const subtotal = getCartTotal(items);
+  const discountPercent = getPaymentDiscountPercent(paymentMethod);
+  const discount = calculatePaymentDiscount(subtotal, paymentMethod);
+
+  return {
+    subtotal,
+    discountPercent,
+    discount,
+    total: roundCurrency(Math.max(0, subtotal - discount)),
+  };
 }
 
 export function getCartQuantity(items: CartItem[]): number {
@@ -79,6 +109,7 @@ function buildWhatsappItemBlock(item: CartItem): string {
     item.sabor ? `Sabor: ${item.sabor}` : null,
     item.tamanho ? `Tamanho: ${item.tamanho}` : null,
     item.embalagem ? `Embalagem: ${item.embalagem}` : null,
+    `Status: ${getFulfillmentLabel(item.fulfillment)}`,
     item.quantity > 1
       ? `Valor: ${formatCurrencyBR(item.unitPrice)} cada | Subtotal: ${formatCurrencyBR(getCartItemSubtotal(item))}`
       : `Valor: ${formatCurrencyBR(item.unitPrice)}`,
@@ -89,9 +120,14 @@ function buildWhatsappItemBlock(item: CartItem): string {
     .join('\n');
 }
 
-export function buildCartWhatsappMessage(items: CartItem[]): string {
+export function buildCartWhatsappMessage(
+  items: CartItem[],
+  paymentMethod: PaymentMethod
+): string {
   const prontaEntrega = items.filter(item => item.fulfillment === 'pronta_entrega');
   const encomenda = items.filter(item => item.fulfillment === 'encomenda');
+  const totals = getCartTotals(items, paymentMethod);
+  const paymentLabel = getPaymentMethodLabel(paymentMethod);
 
   const message: string[] = [
     'Olá! Quero fazer um pedido na ALPHENIX 🔥',
@@ -110,15 +146,27 @@ export function buildCartWhatsappMessage(items: CartItem[]): string {
     message.push('');
   }
 
-  message.push(`Total estimado: ${formatCurrencyBR(getCartTotal(items))}`);
+  message.push(`Forma de pagamento: ${paymentLabel}`);
+  message.push(`Subtotal: ${formatCurrencyBR(totals.subtotal)}`);
+
+  if (totals.discount > 0) {
+    message.push(
+      `Desconto Pix/Dinheiro (${totals.discountPercent}%): -${formatCurrencyBR(totals.discount)}`
+    );
+  }
+
+  message.push(`Total: ${formatCurrencyBR(totals.total)}`);
   message.push('');
-  message.push('Pode confirmar disponibilidade, prazo e forma de pagamento?');
+  message.push('Pode confirmar disponibilidade e prazo?');
 
   return message.join('\n');
 }
 
-export function getCartWhatsappUrl(items: CartItem[]): string {
-  return getWaURL(buildCartWhatsappMessage(items));
+export function getCartWhatsappUrl(
+  items: CartItem[],
+  paymentMethod: PaymentMethod
+): string {
+  return getWaURL(buildCartWhatsappMessage(items, paymentMethod));
 }
 
 export function normalizeCartQuantity(item: CartItem, quantity: number): number {

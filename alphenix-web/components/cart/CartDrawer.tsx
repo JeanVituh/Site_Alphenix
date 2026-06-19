@@ -3,19 +3,27 @@
 //  ALPHENIX — components/cart/CartDrawer.tsx
 //
 //  Drawer lateral do carrinho, com alteração de quantidade,
-//  remoção de item, total estimado e finalização pelo WhatsApp.
+//  remoção de item, escolha de pagamento, desconto Pix/Dinheiro
+//  e finalização pelo WhatsApp.
 // ================================================================
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useCart } from './CartContext';
 import {
   formatCurrencyBR,
   getCartItemSubtotal,
+  getCartTotals,
   getCartWhatsappUrl,
   getFulfillmentLabel,
   getVariationLabel,
 } from '@/lib/cart';
+import {
+  PAYMENT_DISCOUNT_PERCENT,
+  PAYMENT_METHOD_OPTIONS,
+  getPaymentMethodLabel,
+  type PaymentMethod,
+} from '@/lib/payment';
 import styles from './Cart.module.css';
 
 function assetUrl(path: string | null): string | null {
@@ -34,10 +42,11 @@ export function CartDrawer() {
     incrementItem,
     decrementItem,
     clearCart,
-    estimatedTotal,
     totalQuantity,
     hasEncomenda,
   } = useCart();
+
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
 
   useEffect(() => {
     if (!isCartOpen) return;
@@ -59,7 +68,12 @@ export function CartDrawer() {
 
   const prontaEntrega = items.filter(item => item.fulfillment === 'pronta_entrega');
   const encomenda = items.filter(item => item.fulfillment === 'encomenda');
-  const whatsappUrl = items.length > 0 ? getCartWhatsappUrl(items) : '#';
+  const cartTotals = useMemo(
+    () => getCartTotals(items, paymentMethod),
+    [items, paymentMethod]
+  );
+  const whatsappUrl = items.length > 0 ? getCartWhatsappUrl(items, paymentMethod) : '#';
+  const selectedPaymentLabel = getPaymentMethodLabel(paymentMethod);
 
   return (
     <>
@@ -109,7 +123,7 @@ export function CartDrawer() {
               <span>
                {totalQuantity} {totalQuantity === 1 ? 'item' : 'itens'} no carrinho
               </span>
-              <strong>{formatCurrencyBR(estimatedTotal)}</strong>
+              <strong>{formatCurrencyBR(cartTotals.total)}</strong>
             </div>
 
             <div className={styles.cartItems}>
@@ -162,9 +176,55 @@ export function CartDrawer() {
             </div>
 
             <div className={styles.cartFooter}>
-              <div className={styles.cartTotalRow}>
-                <span>Total estimado</span>
-                <strong>{formatCurrencyBR(estimatedTotal)}</strong>
+              <div className={styles.paymentBox}>
+                <div className={styles.paymentBoxHeader}>
+                  <span>Forma de pagamento</span>
+                  <strong>{selectedPaymentLabel}</strong>
+                </div>
+
+                <div className={styles.paymentOptions} role="radiogroup" aria-label="Forma de pagamento">
+                  {PAYMENT_METHOD_OPTIONS.map(option => {
+                    const isSelected = paymentMethod === option.value;
+
+                    return (
+                      <label
+                        key={option.value}
+                        className={`${styles.paymentOption}${isSelected ? ` ${styles.paymentOptionSelected}` : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value={option.value}
+                          checked={isSelected}
+                          onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
+                        />
+                        <span className={styles.paymentOptionText}>
+                          <strong>{option.label}</strong>
+                          <small>{option.description}</small>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={styles.cartTotalsBox}>
+                <div className={styles.cartTotalRow}>
+                  <span>Subtotal</span>
+                  <strong>{formatCurrencyBR(cartTotals.subtotal)}</strong>
+                </div>
+
+                {cartTotals.discount > 0 && (
+                  <div className={`${styles.cartTotalRow} ${styles.cartDiscountRow}`}>
+                    <span>Desconto Pix/Dinheiro ({PAYMENT_DISCOUNT_PERCENT}%)</span>
+                    <strong>-{formatCurrencyBR(cartTotals.discount)}</strong>
+                  </div>
+                )}
+
+                <div className={`${styles.cartTotalRow} ${styles.cartFinalTotalRow}`}>
+                  <span>Total</span>
+                  <strong>{formatCurrencyBR(cartTotals.total)}</strong>
+                </div>
               </div>
 
               <a

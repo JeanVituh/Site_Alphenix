@@ -19,6 +19,8 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProductCard } from '@/lib/types';
 import { CATEGORIES } from '@/lib/categories';
+import { formatCurrencyBR } from '@/lib/cart';
+import { PAYMENT_DISCOUNT_PERCENT, calculateDiscountedPrice } from '@/lib/payment';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -244,7 +246,8 @@ function ProductCardItem({
   const delay = `reveal-delay-${(index % 4) + 1}`;
   const mainImage = product.cover_image_url ?? product.images?.[0] ?? null;
   const price = product.min_price ?? product.base_price ?? 0;
-  const priceLabel = price.toFixed(2).replace('.', ',');
+  const discountedPrice = calculateDiscountedPrice(price, 'pix');
+  const [discountedInt, discountedDec] = discountedPrice.toFixed(2).split('.');
 
   return (
     <article className={`product-card reveal ${delay}`} data-category={product.category}>
@@ -299,10 +302,23 @@ function ProductCardItem({
       </div>
 
       <div className="product-card__footer">
-        <p className="product-card__price">
-          <span className="product-card__price-currency">R$</span>
-          <span className="product-card__price-value">{priceLabel}</span>
-        </p>
+        <div className="product-card__pricing product-card__pricing--compact">
+          <p className="product-card__price-from-line">
+            <span>{product.has_variants ? 'A partir de' : 'De'}</span>
+            <del>{formatCurrencyBR(price)}</del>
+          </p>
+
+          <p className="product-card__price product-card__price--pix">
+            <span className="product-card__price-currency">R$</span>
+            <span className="product-card__price-value">{discountedInt},{discountedDec}</span>
+            <span className="product-card__price-pix-text">no Pix</span>
+          </p>
+
+          <span className="product-card__price-off product-card__price-off--compact">
+            {PAYMENT_DISCOUNT_PERCENT}% OFF
+          </span>
+        </div>
+
         <div className="product-card__actions">
           <Link
             href={`/produtos/${product.slug}`}

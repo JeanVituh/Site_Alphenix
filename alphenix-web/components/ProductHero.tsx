@@ -13,6 +13,12 @@ import Link from 'next/link';
 import { VariantSelector } from './VariantSelector';
 import type { ProductWithVariants, CtaStatus } from '@/lib/types';
 import { getProductWaURL } from '@/lib/whatsapp';
+import { formatCurrencyBR } from '@/lib/cart';
+import {
+  PAYMENT_DISCOUNT_PERCENT,
+  calculateDiscountedPrice,
+  calculatePaymentDiscount,
+} from '@/lib/payment';
 
 // ── Helper ───────────────────────────────────────────────────────
 function assetUrl(path: string): string {
@@ -154,13 +160,16 @@ const initialSkuImage = useMemo(() => {
   const shouldShowPrice = hasVariants ? variantStatus !== 'indisponivel' : true;
   const isOrderVariant = hasVariants && variantStatus === 'encomenda';
   const priceStatusLabel = isOrderVariant ? 'Encomenda' : 'Pronta entrega';
-  const priceTitle = isOrderVariant ? 'Estimativa' : 'Preço';
   const priceNote = isOrderVariant
     ? 'Produto sob encomenda. Confirme prazo e disponibilidade no WhatsApp.'
     : 'Produto à pronta entrega. Confirme disponibilidade e pagamento no WhatsApp.';
 
-  // ── Preço base formatado ─────────────────────────────────────
-  const [priceInt, priceDec] = displayPrice.toFixed(2).split('.');
+  // ── Preço com desconto Pix/Dinheiro ──────────────────────────
+  const pixOrCashDiscount = calculatePaymentDiscount(displayPrice, 'pix');
+  const pixOrCashPrice = calculateDiscountedPrice(displayPrice, 'pix');
+  const shouldShowPaymentDiscount = pixOrCashDiscount > 0;
+  const priceToHighlight = shouldShowPaymentDiscount ? pixOrCashPrice : displayPrice;
+  const [priceInt, priceDec] = priceToHighlight.toFixed(2).split('.');
 
   // WhatsApp direto para produto sem variações
   const directWaUrl = getProductWaURL({
@@ -290,22 +299,42 @@ const initialSkuImage = useMemo(() => {
               </span>
             </div>
 
-            {/* Preço: aparece grande tanto para pronta entrega quanto para encomenda. */}
+            {/* Preço compacto: mantém Pix/desconto, sem alterar carrinho, SKU ou WhatsApp. */}
             {shouldShowPrice && (
-              <div className={`pdp-price-block${isOrderVariant ? ' pdp-price-block--order' : ''}`}>
-                <div className="pdp-price-block__top">
-                  <span className="pdp-price__label">{priceTitle}</span>
+              <div className={`pdp-price-block pdp-price-block--compact${isOrderVariant ? ' pdp-price-block--order' : ''}`}>
+                <div className="pdp-price-block__top pdp-price-block__top--compact">
                   <span className={`pdp-price-status${isOrderVariant ? ' pdp-price-status--order' : ''}`}>
                     {priceStatusLabel}
                   </span>
                 </div>
 
-                <div className="pdp-price">
-                  <span className="pdp-price__curr">R$</span>
-                  <span className="pdp-price__val">
-                    {priceInt},{priceDec}
-                  </span>
-                </div>
+                {shouldShowPaymentDiscount ? (
+                  <div className="pdp-price-compact">
+                    <p className="pdp-price-compact__old">
+                      <span>De</span>
+                      <del>{formatCurrencyBR(displayPrice)}</del>
+                    </p>
+
+                    <p className="pdp-price pdp-price--compact">
+                      <span className="pdp-price__curr">R$</span>
+                      <span className="pdp-price__val">
+                        {priceInt},{priceDec}
+                      </span>
+                      <span className="pdp-price__pix-text">no Pix</span>
+                    </p>
+
+                    <span className="pdp-price__discount-badge pdp-price__discount-badge--compact">
+                      {PAYMENT_DISCOUNT_PERCENT}% OFF
+                    </span>
+                  </div>
+                ) : (
+                  <div className="pdp-price pdp-price--compact">
+                    <span className="pdp-price__curr">R$</span>
+                    <span className="pdp-price__val">
+                      {priceInt},{priceDec}
+                    </span>
+                  </div>
+                )}
 
                 <p className="pdp-price__note">
                   {priceNote}
