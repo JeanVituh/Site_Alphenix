@@ -642,8 +642,7 @@
     padding: 22px 18px 16px;
   }
 
-  .cartSummaryBar,
-  .cartNotice {
+  .cartSummaryBar {
     margin-left: 18px;
     margin-right: 18px;
   }
@@ -683,5 +682,35 @@
 
   .cartItemPrice {
     align-items: flex-start;
+  }
+}
+
+/* Ajustes V3: o aviso de encomenda agora fica dentro da área rolável,
+   sem ficar parado por cima dos produtos no mobile. */
+.cartDrawer {
+  overflow: hidden;
+}
+
+.cartItems {
+  min-height: 0;
+}
+
+.cartNotice {
+  margin: 0 0 18px;
+}
+
+.cartFooter {
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .cartNotice {
+    margin: 0 0 16px;
+    padding: 11px 12px;
+  }
+
+  .cartNotice p {
+    font-size: 13px;
+    line-height: 1.4;
   }
 }

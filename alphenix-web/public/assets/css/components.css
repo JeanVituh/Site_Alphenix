@@ -730,6 +730,7 @@
   color: var(--clr-text-md);
   line-height: 1.65;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -1440,32 +1441,42 @@ body.loaded .header {
     top: 0;
     right: 0;
     bottom: var(--sp-2);
-    width: 72px;
-    background: linear-gradient(to right, transparent, var(--clr-bg) 80%);
+    width: 76px;
+    background: linear-gradient(to right, transparent, var(--clr-bg) 78%);
     pointer-events: none;
     border-radius: 0 var(--radius) var(--radius) 0;
     transition: opacity var(--t-base) var(--ease-out);
   }
 
+  .filter-tabs-wrapper:not(.has-scroll)::after {
+    opacity: 0;
+  }
+
   .filter-scroll-hint {
     position: absolute;
-    top: 50%;
-    right: 6px;
-    transform: translateY(-60%);
+    top: calc(50% - var(--sp-1));
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    transform: translateY(-50%);
     pointer-events: none;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 2px;
-    color: var(--clr-orange);
-    font-size: 0.7rem;
-    opacity: 0.85;
+    justify-content: center;
+    color: #fff;
+    background: rgba(255,107,0,0.92);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: var(--radius-full);
+    box-shadow: 0 10px 30px rgba(255,107,0,0.28);
+    font-size: 0.72rem;
+    opacity: 0.95;
     animation: hintBounce 1.4s ease-in-out infinite;
     transition: opacity var(--t-base) var(--ease-out);
     z-index: 2;
   }
 
   .filter-scroll-hint i {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
   }
 
   /* Esconde hint e fade quando usuário já scrollou */
@@ -1475,8 +1486,8 @@ body.loaded .header {
   }
 
   @keyframes hintBounce {
-    0%, 100% { transform: translateY(-60%) translateX(0);   }
-    50%       { transform: translateY(-60%) translateX(4px); }
+    0%, 100% { transform: translateY(-50%) translateX(0);   }
+    50%       { transform: translateY(-50%) translateX(4px); }
   }
 
   .filter-tab {
@@ -1630,5 +1641,290 @@ body.loaded .header {
   .btn--details {
     font-size: var(--text-xs);
     letter-spacing: 0.04em;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   AJUSTES V3 — Hero, fonte e carrinho mobile
+   ══════════════════════════════════════════════════════ */
+
+.hero__inner {
+  padding-block: var(--sp-16);
+}
+
+.hero__title {
+  max-width: 560px;
+  font-size: clamp(4rem, 6.4vw, 6.4rem);
+  line-height: 0.88;
+  letter-spacing: 0.018em;
+}
+
+.hero__subtitle {
+  max-width: 520px;
+}
+
+.hero__stats {
+  max-width: 520px;
+}
+
+.hero__stat {
+  min-width: 0;
+}
+
+.hero__stat-value {
+  font-size: clamp(1.5rem, 2.1vw, 2.25rem);
+  white-space: normal;
+}
+
+.hero__phoenix-wrap {
+  width: 390px;
+  height: 390px;
+}
+
+.hero__phoenix-img {
+  width: 315px;
+  height: 315px;
+}
+
+.section-title,
+.hero__title,
+.product-card__name,
+.cartTitle,
+.cta-banner__title,
+.feature-card__title {
+  font-stretch: normal;
+  text-rendering: geometricPrecision;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    min-height: auto;
+    padding-bottom: 88px;
+  }
+
+  .hero__inner {
+    gap: var(--sp-8);
+    padding-block: var(--sp-8) var(--sp-10);
+  }
+
+  .hero__content {
+    gap: var(--sp-5);
+  }
+
+  .hero__title {
+    max-width: 360px;
+    margin-inline: auto;
+    font-size: clamp(3.15rem, 13.5vw, 4.6rem);
+    line-height: 0.9;
+    letter-spacing: 0.012em;
+    text-align: center;
+  }
+
+  .hero__subtitle {
+    max-width: 340px;
+    font-size: 1rem;
+    line-height: 1.62;
+  }
+
+  .hero__actions {
+    width: 100%;
+    max-width: 330px;
+    margin-inline: auto;
+  }
+
+  .hero__actions .btn {
+    flex: 1 1 100%;
+    width: 100%;
+    min-height: 52px;
+  }
+
+  .hero__visual {
+    margin-top: var(--sp-2);
+  }
+
+  .hero__phoenix-wrap {
+    width: min(68vw, 250px);
+    height: min(68vw, 250px);
+  }
+
+  .hero__phoenix-img {
+    width: min(50vw, 190px);
+    height: min(50vw, 190px);
+  }
+
+  .hero__stats {
+    width: min(100%, 360px);
+    max-width: 360px;
+    margin-top: var(--sp-2);
+    margin-bottom: 0;
+    padding-top: var(--sp-4);
+  }
+
+  .hero__stat-value {
+    font-size: clamp(1rem, 3.5vw, 1.15rem);
+    line-height: 1.05;
+  }
+
+  .hero__stat-label {
+    margin-top: 3px;
+  }
+
+  .hero__scroll {
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .section-title {
+    font-size: clamp(3rem, 12vw, 4.1rem);
+    letter-spacing: 0.01em;
+  }
+}
+
+@media (max-width: 640px) {
+  .header__logo img {
+    height: 68px;
+  }
+
+  .section-header {
+    margin-bottom: var(--sp-10);
+  }
+
+  .products-section {
+    padding-block: var(--sp-20);
+  }
+
+  .hero__stats {
+    gap: var(--sp-2);
+    padding-inline: 2px;
+  }
+
+  .hero__stat-value {
+    font-size: clamp(0.98rem, 3.4vw, 1.1rem);
+    letter-spacing: 0.01em;
+  }
+
+  .hero__stat-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero__title {
+    font-size: clamp(2.85rem, 13vw, 3.65rem);
+  }
+
+  .hero__subtitle {
+    font-size: 0.95rem;
+  }
+
+  .hero__stat-value {
+    font-size: 0.9rem;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   AJUSTES V5 — Filtros mobile e prevenção de overflow
+   ══════════════════════════════════════════════════════ */
+
+/* Evita overflow lateral sem destruir o layout desktop.
+   Atenção: não sobrescreva o max-width do .container aqui.
+   Quando o .container vira max-width: 100%, os cards ficam gigantes no PC. */
+main,
+.header,
+.hero,
+.products-section,
+.features-section,
+.cta-banner,
+.footer {
+  overflow-x: clip;
+}
+
+.hero__inner,
+.hero__content,
+.hero__visual,
+.products-section .container {
+  min-width: 0;
+}
+
+/* A barra de categorias não deve depender do reveal global.
+   Como ela é renderizada pelo HomeProducts, em algumas cargas o
+   observer do reveal pode não marcar o elemento como .visible. */
+.filter-tabs-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: var(--sp-12);
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+.filter-tabs-wrapper .filter-tabs {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .hero,
+  .products-section {
+    overflow-x: hidden;
+  }
+
+  .hero__inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero__content,
+  .hero__visual {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hero__actions,
+  .hero__stats {
+    max-width: min(100%, 330px);
+  }
+
+  .filter-tabs-wrapper {
+    overflow: hidden;
+    margin-top: var(--sp-4);
+    margin-bottom: var(--sp-10);
+  }
+
+  .filter-tabs {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: var(--sp-2);
+    padding-right: 58px;
+    padding-bottom: var(--sp-2);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-tab {
+    flex: 0 0 auto;
+  }
+
+  .filter-tabs-wrapper::after {
+    right: 0;
+    width: 64px;
+    background: linear-gradient(to right, rgba(8,8,8,0), var(--clr-bg) 78%);
+  }
+
+  .filter-scroll-hint {
+    right: 8px;
   }
 }

@@ -44,15 +44,44 @@ interface HomeProductsProps {
 export function HomeProducts({ products }: HomeProductsProps) {
   const searchParams = useSearchParams();
   const gridRef = useRef<HTMLDivElement>(null);
+  const filterTabsRef = useRef<HTMLDivElement>(null);
 
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterHint, setShowFilterHint] = useState(false);
+  const [filterHintHidden, setFilterHintHidden] = useState(false);
 
   // Deep-link: /?categoria=X (vindo do rodapé ou de fora) pré-seleciona a aba
   useEffect(() => {
     const cat = searchParams.get('categoria');
     if (cat) setActiveCategory(cat);
   }, [searchParams]);
+
+  // Mobile: mostra uma seta discreta quando existem categorias para o lado direito.
+  useEffect(() => {
+    const tabsEl = filterTabsRef.current;
+    if (!tabsEl) return;
+
+    function syncHint() {
+      const currentTabs = filterTabsRef.current;
+      if (!currentTabs) return;
+
+      const hasOverflow = currentTabs.scrollWidth > currentTabs.clientWidth + 4;
+      const userScrolled = currentTabs.scrollLeft > 8;
+
+      setShowFilterHint(hasOverflow);
+      setFilterHintHidden(userScrolled);
+    }
+
+    syncHint();
+    tabsEl.addEventListener('scroll', syncHint, { passive: true });
+    window.addEventListener('resize', syncHint);
+
+    return () => {
+      tabsEl.removeEventListener('scroll', syncHint);
+      window.removeEventListener('resize', syncHint);
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const q = normalizeStr(searchQuery.trim());
@@ -142,8 +171,16 @@ export function HomeProducts({ products }: HomeProductsProps) {
       </div>
 
       {/* ── Category Filters ── */}
-      <div className="filter-tabs-wrapper reveal">
-        <div className="filter-tabs" id="filterTabs" role="tablist" aria-label="Filtrar por categoria">
+      <div
+        className={`filter-tabs-wrapper${showFilterHint ? ' has-scroll' : ''}${filterHintHidden ? ' scrolled' : ''}`}
+      >
+        <div
+          ref={filterTabsRef}
+          className="filter-tabs"
+          id="filterTabs"
+          role="tablist"
+          aria-label="Filtrar por categoria"
+        >
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -159,6 +196,12 @@ export function HomeProducts({ products }: HomeProductsProps) {
             </button>
           ))}
         </div>
+
+        {showFilterHint && (
+          <span className="filter-scroll-hint" aria-hidden="true">
+            <i className="fa-solid fa-chevron-right" />
+          </span>
+        )}
       </div>
 
       {/* ── Products Grid ── */}

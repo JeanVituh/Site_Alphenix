@@ -32,8 +32,8 @@ export function Footer() {
               />
             </Link>
             <p className="footer__tagline">
-              Desperte o seu potencial.<br />
-              Treine como um campeão.
+              Suplementos originais.<br />
+              Entrega rápida em Montes Claros.
             </p>
             <div className="footer__social" aria-label="Redes sociais">
               <a

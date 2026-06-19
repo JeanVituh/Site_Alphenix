@@ -112,16 +112,16 @@ export function CartDrawer() {
               <strong>{formatCurrencyBR(estimatedTotal)}</strong>
             </div>
 
-            {hasEncomenda && (
-              <div className={styles.cartNotice}>
-                <i className="fa-solid fa-box-open" aria-hidden="true" />
-                <p>
-                  Seu carrinho tem item de encomenda. Ele será separado na mensagem do WhatsApp para confirmar prazo e disponibilidade.
-                </p>
-              </div>
-            )}
-
             <div className={styles.cartItems}>
+              {hasEncomenda && (
+                <div className={styles.cartNotice}>
+                  <i className="fa-solid fa-box-open" aria-hidden="true" />
+                  <p>
+                    Itens de encomenda serão separados no WhatsApp para confirmar prazo e disponibilidade.
+                  </p>
+                </div>
+              )}
+
               {prontaEntrega.length > 0 && (
                 <section className={styles.cartGroup}>
                   <h3 className={styles.cartGroupTitle}>

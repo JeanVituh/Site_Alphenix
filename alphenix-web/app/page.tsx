@@ -35,16 +35,15 @@ export default async function HomePage() {
         <div className="container hero__inner">
           {/* Left: Content */}
           <div className="hero__content">
-            <p className="section-eyebrow reveal">🔥 Desperte o seu potencial</p>
+            <p className="section-eyebrow reveal">Desperte o seu potencial</p>
 
             <h1 className="hero__title reveal reveal-delay-1">
-              TREINE COMO<br />
-              <span className="text-gradient">UM CAMPEÃO</span>
+              TREINE COM<br />
+              <span className="text-gradient">QUALIDADE</span>
             </h1>
 
             <p className="hero__subtitle reveal reveal-delay-2">
-              Suplementos premium selecionados para quem leva o treino a sério.
-              Marcas certificadas, resultados que você sente.
+              Suplementos das marcas mais confiáveis do mercado, com atendimento direto e entrega rápida em Montes Claros.
             </p>
 
             <div className="hero__actions reveal reveal-delay-3">
@@ -60,18 +59,18 @@ export default async function HomePage() {
 
             <div className="hero__stats reveal reveal-delay-4" aria-label="Números da Alphenix">
               <div className="hero__stat">
-                <span className="hero__stat-value text-gradient">Preço Justo</span>
-                <span className="hero__stat-label">Na Região</span>
+                <span className="hero__stat-value text-gradient">Melhor Preço</span>
+                <span className="hero__stat-label">Da Região</span>
               </div>
               <div className="hero__stat-sep" aria-hidden="true" />
               <div className="hero__stat">
-                <span className="hero__stat-value text-gradient">Marcas Top</span>
+                <span className="hero__stat-value text-gradient">Marcas Premium</span>
                 <span className="hero__stat-label">Selecionadas</span>
               </div>
               <div className="hero__stat-sep" aria-hidden="true" />
               <div className="hero__stat">
-                <span className="hero__stat-value text-gradient">100% Original</span>
-                <span className="hero__stat-label">Lacrado</span>
+                <span className="hero__stat-value text-gradient">Produtos 100%</span>
+                <span className="hero__stat-label">Originais</span>
               </div>
             </div>
           </div>
@@ -109,8 +108,7 @@ export default async function HomePage() {
             <p className="section-eyebrow">Catálogo Alphenix</p>
             <h2 className="section-title">NOSSOS <span>PRODUTOS</span></h2>
             <p className="section-subtitle">
-              Curadoria das marcas mais confiáveis do mercado.
-              Do whey ao pré-treino — tudo que você precisa em um só lugar.
+              Escolha o suplemento ideal para o seu objetivo e finalize seu pedido direto pelo WhatsApp.
             </p>
           </div>
 
