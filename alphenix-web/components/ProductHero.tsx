@@ -273,7 +273,7 @@ const initialSkuImage = useMemo(() => {
               <div className="pdp-info__top-row">
                 <span className="pdp-brand">{product.brand}</span>
                 {product.badge && (
-                  <span className="pdp-badge">⭐ {product.badge}</span>
+                  <span className="pdp-badge">{product.badge}</span>
                 )}
               </div>
 
