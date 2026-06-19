@@ -151,7 +151,7 @@ const initialSkuImage = useMemo(() => {
   );
 
   const displayPrice = hasVariants ? variantPrice : product.base_price;
-  const shouldShowPrice = hasVariants ? variantStatus !== 'indisponivel' : true;
+  const shouldShowPrice = hasVariants ? variantStatus === 'comprar' : true;
 
   // ── Preço base formatado ─────────────────────────────────────
   const [priceInt, priceDec] = displayPrice.toFixed(2).split('.');
@@ -284,7 +284,7 @@ const initialSkuImage = useMemo(() => {
               </span>
             </div>
 
-            {/* Preço: aparece para pronta entrega e encomenda; só some quando a combinação é indisponível */}
+            {/* Preço: aparece somente quando o SKU selecionado é pronta entrega. */}
             {shouldShowPrice && (
               <div className="pdp-price-block">
                 <div className="pdp-price">
@@ -295,7 +295,7 @@ const initialSkuImage = useMemo(() => {
                 </div>
 
                 <p className="pdp-price__note">
-                  Total estimado. Confirme disponibilidade, prazo e pagamento no WhatsApp
+Produto à pronta entrega. Confirme disponibilidade e pagamento no WhatsApp
                 </p>
               </div>
             )}

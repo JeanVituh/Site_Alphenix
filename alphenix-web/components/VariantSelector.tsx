@@ -58,13 +58,6 @@ function buildInitialSelection(product: ProductWithVariants): SelectedValues {
   return {};
 }
 
-/**
- * Formata preço no padrão brasileiro.
- */
-function formatPrice(value: number): string {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
 // ── Componente Principal ─────────────────────────────────────────
 export function VariantSelector({
   product,
@@ -423,7 +416,6 @@ export function VariantSelector({
           <span className={statusCta === 'comprar' ? styles.badgeReady : styles.badgeOrder}>
             {statusCta === 'comprar' ? 'Pronta entrega' : 'Encomenda'}
           </span>
-          <span className={styles.priceHint}>{formatPrice(currentPrice)}</span>
         </div>
       )}
 
