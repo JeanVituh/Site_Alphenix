@@ -105,14 +105,14 @@ function buildWhatsappItemBlock(item: CartItem): string {
     .filter((value): value is string => Boolean(value && value.trim()));
 
   const lines = [
-    `${item.quantity}x ${headerParts.join(' - ')}`,
-    item.sabor ? `Sabor: ${item.sabor}` : null,
-    item.tamanho ? `Tamanho: ${item.tamanho}` : null,
-    item.embalagem ? `Embalagem: ${item.embalagem}` : null,
-    `Status: ${getFulfillmentLabel(item.fulfillment)}`,
+    `*${item.quantity}x ${headerParts.join(' - ')}*`,
+    item.sabor ? `- Sabor: ${item.sabor}` : null,
+    item.tamanho ? `- Tamanho: ${item.tamanho}` : null,
+    item.embalagem ? `- Embalagem: ${item.embalagem}` : null,
+    `- Status: *${getFulfillmentLabel(item.fulfillment)}*`,
     item.quantity > 1
-      ? `Valor: ${formatCurrencyBR(item.unitPrice)} cada | Subtotal: ${formatCurrencyBR(getCartItemSubtotal(item))}`
-      : `Valor: ${formatCurrencyBR(item.unitPrice)}`,
+      ? `- Valor: *${formatCurrencyBR(item.unitPrice)} cada*\n- Subtotal do item: *${formatCurrencyBR(getCartItemSubtotal(item))}*`
+      : `- Valor: *${formatCurrencyBR(item.unitPrice)}*`,
   ];
 
   return lines
@@ -129,35 +129,39 @@ export function buildCartWhatsappMessage(
   const totals = getCartTotals(items, paymentMethod);
   const paymentLabel = getPaymentMethodLabel(paymentMethod);
 
+  // Evita emojis aqui porque alguns navegadores internos, como o do Instagram,
+  // podem corromper esses caracteres ao abrir o WhatsApp.
   const message: string[] = [
-    'Olá! Quero fazer um pedido na ALPHENIX 🔥',
+    '*Olá! Quero fazer um pedido na ALPHENIX*',
     '',
   ];
 
   if (prontaEntrega.length > 0) {
-    message.push('🛒 PRODUTOS À PRONTA ENTREGA:', '');
+    message.push('*PRODUTOS A PRONTA ENTREGA*', '------------------------------');
     message.push(prontaEntrega.map(buildWhatsappItemBlock).join('\n\n'));
     message.push('');
   }
 
   if (encomenda.length > 0) {
-    message.push('📦 PRODUTOS PARA ENCOMENDA:', '');
+    message.push('*PRODUTOS PARA ENCOMENDA*', '------------------------------');
     message.push(encomenda.map(buildWhatsappItemBlock).join('\n\n'));
     message.push('');
   }
 
-  message.push(`Forma de pagamento: ${paymentLabel}`);
-  message.push(`Subtotal: ${formatCurrencyBR(totals.subtotal)}`);
+  message.push('*RESUMO DO PEDIDO*');
+  message.push('------------------------------');
+  message.push(`Forma de pagamento: *${paymentLabel}*`);
+  message.push(`Subtotal: *${formatCurrencyBR(totals.subtotal)}*`);
 
   if (totals.discount > 0) {
     message.push(
-      `Desconto Pix/Dinheiro (${totals.discountPercent}%): -${formatCurrencyBR(totals.discount)}`
+      `Desconto Pix/Dinheiro (${totals.discountPercent}%): *-${formatCurrencyBR(totals.discount)}*`
     );
   }
 
-  message.push(`Total: ${formatCurrencyBR(totals.total)}`);
+  message.push(`Total: *${formatCurrencyBR(totals.total)}*`);
   message.push('');
-  message.push('Pode confirmar disponibilidade e prazo?');
+  message.push('Pode confirmar disponibilidade, prazo e forma de pagamento?');
 
   return message.join('\n');
 }

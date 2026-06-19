@@ -851,3 +851,25 @@
     min-height: 48px;
   }
 }
+
+
+/* Ajuste mobile: a forma de pagamento não fica mais por cima dos produtos.
+   No celular, o carrinho inteiro rola como uma página única. */
+@media (max-width: 720px) {
+  .cartDrawer {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .cartItems {
+    flex: 0 0 auto;
+    overflow: visible;
+    min-height: auto;
+    padding-bottom: 18px;
+  }
+
+  .cartFooter {
+    flex: 0 0 auto;
+    position: static;
+  }
+}
