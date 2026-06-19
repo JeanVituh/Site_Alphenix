@@ -27,7 +27,7 @@ export function CartButton({ variant = 'icon', onClick }: CartButtonProps) {
         type="button"
         className={styles.cartMenuButton}
         onClick={handleClick}
-        aria-label={`Ver carrinho com ${totalQuantity} item${totalQuantity === 1 ? '' : 's'}`}
+        aria-label={`Ver carrinho com ${totalQuantity} ${totalQuantity === 1 ? 'item' : 'itens'}`}
       >
         <span className={styles.cartMenuButtonIcon} aria-hidden="true">
           <i className="fa-solid fa-cart-shopping" />
@@ -45,7 +45,7 @@ export function CartButton({ variant = 'icon', onClick }: CartButtonProps) {
       type="button"
       className={styles.cartIconButton}
       onClick={handleClick}
-      aria-label={`Ver carrinho com ${totalQuantity} item${totalQuantity === 1 ? '' : 's'}`}
+     aria-label={`Ver carrinho com ${totalQuantity} ${totalQuantity === 1 ? 'item' : 'itens'}`}
     >
       <i className="fa-solid fa-cart-shopping" aria-hidden="true" />
       {totalQuantity > 0 && (

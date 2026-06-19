@@ -107,7 +107,7 @@ export function CartDrawer() {
           <>
             <div className={styles.cartSummaryBar}>
               <span>
-                {totalQuantity} item{totalQuantity === 1 ? '' : 's'} no carrinho
+               {totalQuantity} {totalQuantity === 1 ? 'item' : 'itens'} no carrinho
               </span>
               <strong>{formatCurrencyBR(estimatedTotal)}</strong>
             </div>

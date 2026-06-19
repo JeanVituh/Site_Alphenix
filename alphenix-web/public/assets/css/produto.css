@@ -1345,3 +1345,72 @@
     height: 32px;
   }
 }
+/* ═══════════════════════════════════════════════════════════════
+   ALPHENIX — ajuste visual de preço por status do SKU
+   Pronta entrega mantém destaque principal; encomenda também mostra
+   preço grande, mas com tratamento visual de estimativa.
+   ═══════════════════════════════════════════════════════════════ */
+
+.pdp-price-block__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.pdp-price__label {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clr-text-sm);
+}
+
+.pdp-price-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  color: #06140b;
+  background: #3ddc84;
+  border: 1px solid transparent;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pdp-price-status--order {
+  color: var(--clr-orange);
+  background: rgba(255, 138, 31, 0.12);
+  border-color: rgba(255, 138, 31, 0.3);
+}
+
+.pdp-price-block--order {
+  border-left-color: rgba(255, 138, 31, 0.55);
+  background:
+    linear-gradient(135deg, rgba(255, 138, 31, 0.075), transparent 52%),
+    var(--clr-bg-card);
+}
+
+.pdp-price-block--order .pdp-price__curr,
+.pdp-price-block--order .pdp-price__label {
+  color: rgba(255, 209, 138, 0.78);
+}
+
+.pdp-price-block--order .pdp-price__val {
+  background: linear-gradient(135deg, #ff8a1f 0%, #ffd18a 52%, #fff3dc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@media (max-width: 480px) {
+  .pdp-price-block__top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

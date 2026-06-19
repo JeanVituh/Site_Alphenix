@@ -151,7 +151,13 @@ const initialSkuImage = useMemo(() => {
   );
 
   const displayPrice = hasVariants ? variantPrice : product.base_price;
-  const shouldShowPrice = hasVariants ? variantStatus === 'comprar' : true;
+  const shouldShowPrice = hasVariants ? variantStatus !== 'indisponivel' : true;
+  const isOrderVariant = hasVariants && variantStatus === 'encomenda';
+  const priceStatusLabel = isOrderVariant ? 'Encomenda' : 'Pronta entrega';
+  const priceTitle = isOrderVariant ? 'Estimativa' : 'Preço';
+  const priceNote = isOrderVariant
+    ? 'Produto sob encomenda. Confirme prazo e disponibilidade no WhatsApp.'
+    : 'Produto à pronta entrega. Confirme disponibilidade e pagamento no WhatsApp.';
 
   // ── Preço base formatado ─────────────────────────────────────
   const [priceInt, priceDec] = displayPrice.toFixed(2).split('.');
@@ -284,9 +290,16 @@ const initialSkuImage = useMemo(() => {
               </span>
             </div>
 
-            {/* Preço: aparece somente quando o SKU selecionado é pronta entrega. */}
+            {/* Preço: aparece grande tanto para pronta entrega quanto para encomenda. */}
             {shouldShowPrice && (
-              <div className="pdp-price-block">
+              <div className={`pdp-price-block${isOrderVariant ? ' pdp-price-block--order' : ''}`}>
+                <div className="pdp-price-block__top">
+                  <span className="pdp-price__label">{priceTitle}</span>
+                  <span className={`pdp-price-status${isOrderVariant ? ' pdp-price-status--order' : ''}`}>
+                    {priceStatusLabel}
+                  </span>
+                </div>
+
                 <div className="pdp-price">
                   <span className="pdp-price__curr">R$</span>
                   <span className="pdp-price__val">
@@ -295,7 +308,7 @@ const initialSkuImage = useMemo(() => {
                 </div>
 
                 <p className="pdp-price__note">
-Produto à pronta entrega. Confirme disponibilidade e pagamento no WhatsApp
+                  {priceNote}
                 </p>
               </div>
             )}

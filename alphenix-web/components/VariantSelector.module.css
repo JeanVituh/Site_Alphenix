@@ -1,7 +1,7 @@
 /* ================================================================
    ALPHENIX — VariantSelector.module.css
    Usa as mesmas CSS variables do seu variables.css existente.
-   Compatível 1:1 com o design Alphenix (cores, raios, tipografia).
+   Compatível 1:1 com o design Alphenix (cores, raios, tipografia). Versão marketplace: pronta entrega fica como padrão principal; encomenda fica clicável, porém visualmente secundária.
    ================================================================ */
 
 /* ── Container principal ─────────────────────────────────────── */
@@ -45,7 +45,9 @@
   display:        inline-flex;
   align-items:    center;
   justify-content: center;
-  padding:        8px 16px;
+  gap:            0;
+  min-height:     36px;
+  padding:        8px 14px;
   font-family:    var(--font-body);
   font-size:      var(--text-sm);
   font-weight:    600;
@@ -70,6 +72,30 @@
   box-shadow:   var(--shadow-glow-sm);
 }
 
+.optionName {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+/* ── Estado visual discreto: opção sob encomenda ────────────────
+   Marketplace/premium:
+   - pronta entrega fica com o botão padrão (principal);
+   - encomenda continua clicável, mas aparece como alternativa secundária;
+   - o destaque forte fica reservado apenas para a opção selecionada. */
+.optionBtnOrder {
+  color:        #9a9a9a;
+  background:   rgba(255, 107, 0, 0.018);
+  border-color: rgba(255, 107, 0, 0.20);
+}
+
+.optionBtnOrder:hover:not(:disabled) {
+  color:        var(--clr-text-md);
+  background:   rgba(255, 107, 0, 0.045);
+  border-color: rgba(255, 107, 0, 0.38);
+  box-shadow:   none;
+}
+
 /* ── Estado: selecionado ─────────────────────────────────────── */
 .optionBtnActive {
   color:        var(--clr-text);
@@ -82,7 +108,14 @@
   transform: none; /* Não mover o que já está selecionado */
 }
 
-/* ── Estado: esgotado (disabled) ─────────────────────────────── */
+.optionBtnOrder.optionBtnActive {
+  color:        var(--clr-text);
+  background:   rgba(255, 107, 0, 0.10);
+  border-color: var(--clr-orange);
+  box-shadow:   0 0 0 1px rgba(255, 107, 0, 0.14), var(--shadow-glow-sm);
+}
+
+/* ── Estado: esgotado / combinação inexistente (disabled) ─────── */
 .optionBtnDisabled {
   color:          var(--clr-text-xs);
   background:     transparent;
@@ -112,8 +145,8 @@
   pointer-events: none;
 }
 
-/* ── Linha de preço ──────────────────────────────────────────── */
-.priceRow {
+/* ── Resumo da combinação selecionada ─────────────────────────── */
+.selectionSummary {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -121,14 +154,10 @@
   margin-top: var(--sp-2);
 }
 
-.price {
-  font-family: var(--font-display);
-  font-size:   var(--text-4xl);
-  line-height: 1;
-  background:  var(--grad-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip:         text;
+.selectionSummaryText {
+  color: var(--clr-text-sm);
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 .badgeSoldOut {
@@ -142,44 +171,6 @@
   background:    rgba(255, 69, 0, 0.12);
   color:         var(--clr-ember);
   border:        1px solid rgba(255, 69, 0, 0.3);
-}
-
-/* ── Badges de status e preço ────────────────────────────────── */
-.badgeReady,
-.badgeOrder {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.badgeReady {
-  color: #120a05;
-  background: var(--clr-orange);
-  border: 1px solid transparent;
-}
-
-.badgeOrder {
-  color: var(--clr-orange);
-  background: rgba(255, 138, 31, 0.12);
-  border: 1px solid rgba(255, 138, 31, 0.3);
-}
-
-.priceHint {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 4px 10px;
-  color: var(--clr-text-md);
-  font-size: var(--text-sm);
-  font-weight: 800;
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid var(--clr-border);
-  border-radius: var(--radius-full);
 }
 
 /* ── Botão CTA Carrinho ──────────────────────────────────────── */
@@ -204,7 +195,8 @@
   transition:
     transform var(--t-fast) var(--ease-out),
     box-shadow var(--t-base) var(--ease-out),
-    filter var(--t-base) var(--ease-out);
+    filter var(--t-base) var(--ease-out),
+    background var(--t-base) var(--ease-out);
   box-shadow: var(--shadow-glow-sm);
 }
 
@@ -254,18 +246,21 @@
 
 /* ── Responsivo ──────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .price {
-    font-size: var(--text-3xl);
+  .selector {
+    gap: var(--sp-5);
   }
 
   .optionBtn {
-    padding:   6px 12px;
+    min-height: 34px;
+    padding:   6px 10px;
     font-size: var(--text-xs);
   }
 
-  .priceHint {
+  .selectionSummary {
+    align-items: flex-start;
+  }
+
+  .selectionSummaryText {
     width: 100%;
-    justify-content: center;
-    font-size: var(--text-xs);
   }
 }

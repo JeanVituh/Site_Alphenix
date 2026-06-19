@@ -1,7 +1,7 @@
 'use client';
 // ================================================================
 //  ALPHENIX — VariantSelector (components/VariantSelector.tsx)
-//  v3: seleção de SKU + adicionar ao carrinho
+//  v5: seleção de SKU + indicação visual minimalista de encomenda
 //
 //  Regra:
 //  - available=true  → a variação existe/vende e pode aparecer no site
@@ -30,16 +30,13 @@ interface VariantSelectorProps {
   onVariantChange?: (data: { price: number; status: CtaStatus }) => void;
 }
 
+type VariantDimension = keyof SelectedValues;
+type VariantOptionStatus = 'ready' | 'order' | 'unavailable';
+type OptionStatusMap = Record<'sabor' | 'tamanho' | 'embalagem', Record<string, VariantOptionStatus>>;
+
 // ── Helpers ──────────────────────────────────────────────────────
 function getSellableSkus(product: ProductWithVariants): SkuVariacao[] {
   return product.skus_variacoes.filter(sku => sku.available);
-}
-
-function formatPrice(value: number): string {
-  return value.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).replace(/\u00A0/g, ' ');
 }
 
 /**
@@ -63,6 +60,65 @@ function buildInitialSelection(product: ProductWithVariants): SelectedValues {
   }
 
   return {};
+}
+
+function getSkuStatus(sku: SkuVariacao | null): VariantOptionStatus {
+  if (!sku || !sku.available) return 'unavailable';
+  return sku.stock > 0 ? 'ready' : 'order';
+}
+
+function getOptionStatusLabel(status: VariantOptionStatus): string {
+  if (status === 'ready') return 'Pronta entrega';
+  if (status === 'order') return 'Encomenda';
+  return 'Indisponível';
+}
+
+function mapStatusToAvailability(
+  statusMap: Record<string, VariantOptionStatus>
+): Record<string, boolean> {
+  return Object.fromEntries(
+    Object.entries(statusMap).map(([id, status]) => [id, status !== 'unavailable'])
+  );
+}
+
+/**
+ * Mesmo critério usado no fallback de seleção: tenta preservar sabor, tamanho e
+ * embalagem atuais e dá uma pequena prioridade para pronta entrega.
+ */
+function scoreSkuForSelection(
+  sku: SkuVariacao,
+  index: number,
+  dimensao: VariantDimension,
+  prev: SelectedValues
+): { sku: SkuVariacao; score: number; index: number } {
+  let score = 0;
+
+  if (dimensao !== 'saborId' && prev.saborId && sku.sabor_id === prev.saborId) {
+    score += 100;
+  }
+  if (dimensao !== 'tamanhoId' && prev.tamanhoId && sku.tamanho_id === prev.tamanhoId) {
+    score += 80;
+  }
+  if (dimensao !== 'embalagemId' && prev.embalagemId && sku.tipo_embalagem_id === prev.embalagemId) {
+    score += 60;
+  }
+  if (sku.stock > 0) {
+    score += 5;
+  }
+
+  return { sku, score, index };
+}
+
+function pickBestSkuForOption(
+  candidates: SkuVariacao[],
+  dimensao: VariantDimension,
+  selectedValues: SelectedValues
+): SkuVariacao | null {
+  if (!candidates.length) return null;
+
+  return candidates
+    .map((sku, index) => scoreSkuForSelection(sku, index, dimensao, selectedValues))
+    .sort((a, b) => b.score - a.score || a.index - b.index)[0].sku;
 }
 
 // ── Componente Principal ─────────────────────────────────────────
@@ -95,41 +151,45 @@ export function VariantSelector({
     );
   }, [selectedValues, skusValidos, usaSabor, usaTamanho, usaEmbalagem]);
 
-  // ── LÓGICA 2: Disponibilidade de cada botão de opção ───────────
-  // Botão habilitado = existe SKU vendável para aquela opção.
-  // Importante: tamanho e embalagem NÃO podem ficar presos demais à seleção atual.
-  // Exemplo real: DUX 1,8kg existe somente como Refil. Se o usuário estiver em
-  // 900g + Pote, o tamanho 1,8kg precisa continuar clicável para o código
-  // trocar automaticamente a embalagem para Refil.
-  const disponibilidade = useMemo<OptionAvailability>(() => {
-    const sabor: Record<string, boolean> = {};
-    const tamanho: Record<string, boolean> = {};
-    const embalagem: Record<string, boolean> = {};
+  // ── LÓGICA 2: status de cada botão de opção ────────────────────
+  // Status do botão = resultado mais provável ao clicar naquela opção.
+  // Importante: encomenda continua clicável; indisponível/inexistente não.
+  const optionStatuses = useMemo<OptionStatusMap>(() => {
+    const sabor: Record<string, VariantOptionStatus> = {};
+    const tamanho: Record<string, VariantOptionStatus> = {};
+    const embalagem: Record<string, VariantOptionStatus> = {};
 
-    // Sabor continua respeitando tamanho + embalagem selecionados.
-    // Depois que 1,8kg selecionar Refil automaticamente, aqui aparecem
-    // somente os sabores que realmente existem para 1,8kg + Refil.
     for (const s of product.sabores_disponiveis) {
-      sabor[s.id] = skusValidos.some(sku =>
+      const candidates = skusValidos.filter(sku =>
         sku.sabor_id === s.id &&
         (!usaTamanho || !selectedValues.tamanhoId || sku.tamanho_id === selectedValues.tamanhoId) &&
         (!usaEmbalagem || !selectedValues.embalagemId || sku.tipo_embalagem_id === selectedValues.embalagemId)
+      );
+
+      sabor[s.id] = getSkuStatus(
+        pickBestSkuForOption(candidates, 'saborId', selectedValues)
       );
     }
 
     // Tamanho precisa ser livre: se existe qualquer SKU vendável daquele tamanho,
     // deixa clicar. O handleSelect abaixo resolve sabor/embalagem automaticamente.
     for (const t of product.tamanhos_disponiveis) {
-      tamanho[t.id] = skusValidos.some(sku => sku.tamanho_id === t.id);
+      const candidates = skusValidos.filter(sku => sku.tamanho_id === t.id);
+
+      tamanho[t.id] = getSkuStatus(
+        pickBestSkuForOption(candidates, 'tamanhoId', selectedValues)
+      );
     }
 
     // Embalagem respeita o tamanho atual, mas não prende no sabor atual.
-    // Assim, se o sabor atual não existir naquela embalagem/tamanho, o seletor
-    // troca para o primeiro SKU válido sem travar a navegação.
     for (const e of product.tipos_embalagem_disponiveis) {
-      embalagem[e.id] = skusValidos.some(sku =>
+      const candidates = skusValidos.filter(sku =>
         sku.tipo_embalagem_id === e.id &&
         (!usaTamanho || !selectedValues.tamanhoId || sku.tamanho_id === selectedValues.tamanhoId)
+      );
+
+      embalagem[e.id] = getSkuStatus(
+        pickBestSkuForOption(candidates, 'embalagemId', selectedValues)
       );
     }
 
@@ -139,11 +199,18 @@ export function VariantSelector({
     product.tamanhos_disponiveis,
     product.tipos_embalagem_disponiveis,
     skusValidos,
-    selectedValues.tamanhoId,
-    selectedValues.embalagemId,
+    selectedValues,
     usaTamanho,
     usaEmbalagem,
   ]);
+
+  const disponibilidade = useMemo<OptionAvailability>(() => {
+    return {
+      sabor: mapStatusToAvailability(optionStatuses.sabor),
+      tamanho: mapStatusToAvailability(optionStatuses.tamanho),
+      embalagem: mapStatusToAvailability(optionStatuses.embalagem),
+    };
+  }, [optionStatuses]);
 
   const visibleSabores = useMemo(() => {
     return product.sabores_disponiveis.filter(
@@ -165,10 +232,14 @@ export function VariantSelector({
     const primeiroSaborVisivel = visibleSabores[0];
     if (!primeiroSaborVisivel) return;
 
-    setSelectedValues(prev => ({
-      ...prev,
-      saborId: primeiroSaborVisivel.id,
-    }));
+    const timeoutId = window.setTimeout(() => {
+      setSelectedValues(prev => ({
+        ...prev,
+        saborId: primeiroSaborVisivel.id,
+      }));
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [
     product.sabores_disponiveis.length,
     selectedValues.saborId,
@@ -177,7 +248,6 @@ export function VariantSelector({
 
   // ── LÓGICA 3: Preço e status do CTA ─────────────────────────────
   const currentPrice = currentSku?.price ?? product.base_price;
-  const currentPriceLabel = formatPrice(currentPrice);
 
   const statusCta: CtaStatus = !currentSku || !currentSku.available
     ? 'indisponivel'
@@ -191,7 +261,7 @@ export function VariantSelector({
 
   // ── Handler: ao clicar em uma opção ──────────────────────────
   const handleSelect = useCallback(
-    (dimensao: keyof SelectedValues, valueId: string) => {
+    (dimensao: VariantDimension, valueId: string) => {
       setSelectedValues(prev => {
         const next = { ...prev, [dimensao]: valueId };
 
@@ -215,28 +285,8 @@ export function VariantSelector({
           return false;
         });
 
-        if (!candidates.length) return prev;
-
-        const fallbackSku = candidates
-          .map((sku, index) => {
-            let score = 0;
-
-            if (dimensao !== 'saborId' && prev.saborId && sku.sabor_id === prev.saborId) {
-              score += 100;
-            }
-            if (dimensao !== 'tamanhoId' && prev.tamanhoId && sku.tamanho_id === prev.tamanhoId) {
-              score += 80;
-            }
-            if (dimensao !== 'embalagemId' && prev.embalagemId && sku.tipo_embalagem_id === prev.embalagemId) {
-              score += 60;
-            }
-            if (sku.stock > 0) {
-              score += 5;
-            }
-
-            return { sku, score, index };
-          })
-          .sort((a, b) => b.score - a.score || a.index - b.index)[0].sku;
+        const fallbackSku = pickBestSkuForOption(candidates, dimensao, prev);
+        if (!fallbackSku) return prev;
 
         return {
           saborId: fallbackSku.sabor_id ?? undefined,
@@ -286,6 +336,11 @@ export function VariantSelector({
     currentPrice,
   ]);
 
+  const renderUnavailableLine = (isAvailable: boolean) => {
+    if (isAvailable) return null;
+    return <span className={styles.soldOutLine} aria-hidden="true" />;
+  };
+
   // ── Render ────────────────────────────────────────────────────
   return (
     <div className={styles.selector}>
@@ -303,7 +358,9 @@ export function VariantSelector({
           <div className={styles.options} role="group" aria-label="Selecionar Sabor">
             {visibleSabores.map(sabor => {
               const isSelected = selectedValues.saborId === sabor.id;
+              const status = optionStatuses.sabor[sabor.id] ?? 'unavailable';
               const isAvailable = disponibilidade.sabor[sabor.id] ?? false;
+              const statusLabel = getOptionStatusLabel(status);
 
               return (
                 <button
@@ -311,6 +368,7 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
+                    isAvailable && status === 'order' ? styles.optionBtnOrder : '',
                     isSelected ? styles.optionBtnActive : '',
                     !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
@@ -318,12 +376,12 @@ export function VariantSelector({
                   disabled={!isAvailable}
                   aria-pressed={isSelected}
                   aria-disabled={!isAvailable}
-                  title={!isAvailable ? `${sabor.nome} — Combinação indisponível` : sabor.nome}
+                  title={!isAvailable ? `${sabor.nome} — Combinação indisponível` : `${sabor.nome} — ${statusLabel}`}
                 >
-                  {sabor.nome}
-                  {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
+                  <span className={styles.optionName}>{sabor.nome}</span>
+                  {renderUnavailableLine(isAvailable)}
                   <span className="sr-only">
-                    {!isAvailable ? ' (Indisponível)' : ''}
+                    {' '}({statusLabel})
                     {isSelected ? ' (Selecionado)' : ''}
                   </span>
                 </button>
@@ -346,7 +404,9 @@ export function VariantSelector({
           <div className={styles.options} role="group" aria-label="Selecionar Tamanho">
             {product.tamanhos_disponiveis.map(tamanho => {
               const isSelected = selectedValues.tamanhoId === tamanho.id;
+              const status = optionStatuses.tamanho[tamanho.id] ?? 'unavailable';
               const isAvailable = disponibilidade.tamanho[tamanho.id] ?? false;
+              const statusLabel = getOptionStatusLabel(status);
 
               return (
                 <button
@@ -354,6 +414,7 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
+                    isAvailable && status === 'order' ? styles.optionBtnOrder : '',
                     isSelected ? styles.optionBtnActive : '',
                     !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
@@ -361,12 +422,12 @@ export function VariantSelector({
                   disabled={!isAvailable}
                   aria-pressed={isSelected}
                   aria-disabled={!isAvailable}
-                  title={!isAvailable ? `${tamanho.nome} — Combinação indisponível` : tamanho.nome}
+                  title={!isAvailable ? `${tamanho.nome} — Combinação indisponível` : `${tamanho.nome} — ${statusLabel}`}
                 >
-                  {tamanho.nome}
-                  {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
+                  <span className={styles.optionName}>{tamanho.nome}</span>
+                  {renderUnavailableLine(isAvailable)}
                   <span className="sr-only">
-                    {!isAvailable ? ' (Indisponível)' : ''}
+                    {' '}({statusLabel})
                     {isSelected ? ' (Selecionado)' : ''}
                   </span>
                 </button>
@@ -389,7 +450,9 @@ export function VariantSelector({
           <div className={styles.options} role="group" aria-label="Selecionar Embalagem">
             {product.tipos_embalagem_disponiveis.map(embalagem => {
               const isSelected = selectedValues.embalagemId === embalagem.id;
+              const status = optionStatuses.embalagem[embalagem.id] ?? 'unavailable';
               const isAvailable = disponibilidade.embalagem[embalagem.id] ?? false;
+              const statusLabel = getOptionStatusLabel(status);
 
               return (
                 <button
@@ -397,6 +460,7 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
+                    isAvailable && status === 'order' ? styles.optionBtnOrder : '',
                     isSelected ? styles.optionBtnActive : '',
                     !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
@@ -404,12 +468,12 @@ export function VariantSelector({
                   disabled={!isAvailable}
                   aria-pressed={isSelected}
                   aria-disabled={!isAvailable}
-                  title={!isAvailable ? `${embalagem.nome} — Combinação indisponível` : embalagem.nome}
+                  title={!isAvailable ? `${embalagem.nome} — Combinação indisponível` : `${embalagem.nome} — ${statusLabel}`}
                 >
-                  {embalagem.nome}
-                  {!isAvailable && <span className={styles.soldOutLine} aria-hidden="true" />}
+                  <span className={styles.optionName}>{embalagem.nome}</span>
+                  {renderUnavailableLine(isAvailable)}
                   <span className="sr-only">
-                    {!isAvailable ? ' (Indisponível)' : ''}
+                    {' '}({statusLabel})
                     {isSelected ? ' (Selecionado)' : ''}
                   </span>
                 </button>
@@ -419,22 +483,8 @@ export function VariantSelector({
         </div>
       )}
 
-      {statusCta !== 'indisponivel' && (
-        <div className={styles.priceRow}>
-          <span className={statusCta === 'comprar' ? styles.badgeReady : styles.badgeOrder}>
-            {statusCta === 'comprar' ? 'Pronta entrega' : 'Encomenda'}
-          </span>
-
-          {statusCta === 'encomenda' && (
-            <span className={styles.priceHint}>
-              Estimativa: {currentPriceLabel}
-            </span>
-          )}
-        </div>
-      )}
-
       {statusCta === 'indisponivel' && (
-        <div className={styles.priceRow}>
+        <div className={styles.selectionSummary}>
           <span className={styles.badgeSoldOut}>Combinação Indisponível</span>
         </div>
       )}
@@ -471,12 +521,12 @@ export function VariantSelector({
       {/* Mensagens de auxílio */}
       {statusCta === 'comprar' && (
         <p className={styles.helpText}>
-          Esse item entra no carrinho como pronta entrega. Você finaliza tudo pelo WhatsApp no carrinho.
+          Esse item será adicionado ao carrinho como pronta entrega.
         </p>
       )}
       {statusCta === 'encomenda' && (
         <p className={styles.helpText}>
-          Esse item está sem estoque agora, mas pode entrar como encomenda e será separado na mensagem do WhatsApp.
+          Esse item será adicionado ao carrinho como encomenda.
         </p>
       )}
       {statusCta === 'indisponivel' && (
