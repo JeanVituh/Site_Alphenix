@@ -22,9 +22,6 @@
         "name": "next"
       }
     ],
-    /* ── Silencia o aviso de depreciação do baseUrl no TS 6.0 ── */
-    "ignoreDeprecations": "6.0",
-    /* ── Path alias: @/ aponta para a raiz do projeto ── */
     "baseUrl": ".",
     "paths": {
       "@/*": [
