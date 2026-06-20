@@ -11,11 +11,15 @@ import { useEffect, useRef, useState } from 'react';
 import { CartButton } from '@/components/cart/CartButton';
 
 const NAV_LINKS = [
-  { href: '/#inicio',   label: 'Início',       id: 'inicio'   },
-  { href: '/#produtos', label: 'Produtos',     id: 'produtos' },
-  { href: '/#sobre',    label: 'Diferenciais', id: 'sobre'    },
-  { href: '/#contato',  label: 'Contato',      id: 'contato'  },
-];
+  { label: 'Início',       id: 'inicio'   },
+  { label: 'Produtos',     id: 'produtos' },
+  { label: 'Diferenciais', id: 'sobre'    },
+  { label: 'Contato',      id: 'contato'  },
+] as const;
+
+type SectionId = (typeof NAV_LINKS)[number]['id'];
+
+const PENDING_SCROLL_KEY = 'alphenix:pending-scroll-section';
 
 export function Header() {
   const pathname = usePathname();
@@ -23,21 +27,76 @@ export function Header() {
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeId, setActiveId] = useState('inicio');
+  const [activeId, setActiveId] = useState<SectionId>('inicio');
+
+  function getHeaderOffset() {
+    return headerRef.current?.offsetHeight ?? 0;
+  }
+
+  function scrollToSection(sectionId: SectionId, behavior: ScrollBehavior = 'smooth') {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    const top = Math.max(
+      section.getBoundingClientRect().top + window.scrollY - getHeaderOffset(),
+      0,
+    );
+
+    window.scrollTo({ top, behavior });
+  }
+
+  function closeMobileMenuNow() {
+    setMenuOpen(false);
+
+    // Remove a trava do scroll na hora do clique. No celular, se o body
+    // continuar com overflow hidden durante a navegação por âncora, a página
+    // pode não descer mesmo com o link certo.
+    document.body.classList.remove('menu-open');
+  }
+
+  function goToSection(sectionId: SectionId) {
+    closeMobileMenuNow();
+    setActiveId(sectionId);
+
+    // Se estiver em uma página de produto, volta para a home e guarda
+    // qual seção deve abrir depois do carregamento.
+    if (window.location.pathname !== '/') {
+      sessionStorage.setItem(PENDING_SCROLL_KEY, sectionId);
+      window.location.assign(`/#${sectionId}`);
+      return;
+    }
+
+    if (window.location.hash !== `#${sectionId}`) {
+      window.history.pushState(null, '', `/#${sectionId}`);
+    }
+
+    // Faz a rolagem manualmente, sem depender do comportamento automático
+    // do Link/âncora. Os retries deixam estável no mobile, mesmo com menu
+    // fechando, imagens carregando e altura do layout mudando.
+    window.requestAnimationFrame(() => scrollToSection(sectionId));
+    window.setTimeout(() => scrollToSection(sectionId), 80);
+    window.setTimeout(() => scrollToSection(sectionId), 220);
+  }
 
   // ── Header com fundo ao rolar a página ──────────────────────
   useEffect(() => {
     function onScroll() {
       setScrolled(window.scrollY > 60);
     }
+
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
+
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   // ── Trava o scroll do body quando o menu mobile está aberto ──
   useEffect(() => {
     document.body.classList.toggle('menu-open', menuOpen);
+
+    return () => {
+      document.body.classList.remove('menu-open');
+    };
   }, [menuOpen]);
 
   // ── Fecha o menu mobile ao clicar fora ou apertar Esc ───────
@@ -49,23 +108,39 @@ export function Header() {
         setMenuOpen(false);
       }
     }
+
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setMenuOpen(false);
     }
 
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', onKeyDown);
+
     return () => {
       document.removeEventListener('click', onDocClick);
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [menuOpen]);
 
-  // ── Destaca o link correto do menu conforme a seção atual.
-  //    A versão anterior usava IntersectionObserver e, em alguns casos,
-  //    o link ficava preso na aba anterior depois do clique em âncoras
-  //    como /#produtos ou /#contato. Aqui o estado é atualizado no clique
-  //    e também sincronizado pelo scroll.
+  // ── Se abriu a home já com hash ou vindo de produto, rola até a seção ──
+  useEffect(() => {
+    if (pathname !== '/') return;
+
+    const pendingId = sessionStorage.getItem(PENDING_SCROLL_KEY) as SectionId | null;
+    const hashId = window.location.hash.replace('#', '') as SectionId;
+    const targetId = pendingId || hashId;
+    const matchingLink = NAV_LINKS.find((link) => link.id === targetId);
+
+    if (!matchingLink) return;
+
+    sessionStorage.removeItem(PENDING_SCROLL_KEY);
+    setActiveId(matchingLink.id);
+
+    window.setTimeout(() => scrollToSection(matchingLink.id, 'auto'), 120);
+    window.setTimeout(() => scrollToSection(matchingLink.id, 'auto'), 300);
+  }, [pathname]);
+
+  // ── Destaca o link correto do menu conforme a seção atual ─────
   useEffect(() => {
     if (pathname !== '/') {
       setActiveId('inicio');
@@ -75,9 +150,8 @@ export function Header() {
     let frameId: number | null = null;
 
     function syncActiveSection() {
-      const headerOffset = headerRef.current?.offsetHeight ?? 0;
-      const scrollPoint = window.scrollY + headerOffset + 96;
-      let currentId = 'inicio';
+      const scrollPoint = window.scrollY + getHeaderOffset() + 96;
+      let currentId: SectionId = 'inicio';
 
       for (const link of NAV_LINKS) {
         const section = document.getElementById(link.id);
@@ -104,29 +178,16 @@ export function Header() {
       frameId = window.requestAnimationFrame(syncActiveSection);
     }
 
-    function onHashChange() {
-      const hashId = window.location.hash.replace('#', '');
-      const matchingLink = NAV_LINKS.find((link) => link.id === hashId);
-
-      if (matchingLink) {
-        setActiveId(matchingLink.id);
-      }
-
-      window.setTimeout(scheduleSync, 80);
-    }
-
     scheduleSync();
     window.setTimeout(scheduleSync, 120);
 
     window.addEventListener('scroll', scheduleSync, { passive: true });
     window.addEventListener('resize', scheduleSync);
-    window.addEventListener('hashchange', onHashChange);
 
     return () => {
       if (frameId !== null) window.cancelAnimationFrame(frameId);
       window.removeEventListener('scroll', scheduleSync);
       window.removeEventListener('resize', scheduleSync);
-      window.removeEventListener('hashchange', onHashChange);
     };
   }, [pathname]);
 
@@ -142,16 +203,13 @@ export function Header() {
           <ul className="nav__list">
             {NAV_LINKS.map((link) => (
               <li key={link.id}>
-                <Link
-                  href={link.href}
+                <button
+                  type="button"
                   className={`nav__link${activeId === link.id ? ' active' : ''}`}
-                  onClick={() => {
-                    setActiveId(link.id);
-                    setMenuOpen(false);
-                  }}
+                  onClick={() => goToSection(link.id)}
                 >
                   {link.label}
-                </Link>
+                </button>
               </li>
             ))}
           </ul>
@@ -161,17 +219,14 @@ export function Header() {
           {/* Carrinho sempre visível no header, inclusive no mobile */}
           <CartButton />
 
-          <Link
-            href="/#produtos"
+          <button
+            type="button"
             className="btn btn--primary header__cta"
-            onClick={() => {
-              setActiveId('produtos');
-              setMenuOpen(false);
-            }}
+            onClick={() => goToSection('produtos')}
           >
             <i className="fa-solid fa-bolt" aria-hidden="true" />
             Ver Produtos
-          </Link>
+          </button>
 
           <button
             type="button"
@@ -198,16 +253,13 @@ export function Header() {
           <ul className="mobile-menu__list">
             {NAV_LINKS.map((link) => (
               <li key={link.id}>
-                <Link
-                  href={link.href}
+                <button
+                  type="button"
                   className="mobile-menu__link"
-                  onClick={() => {
-                    setActiveId(link.id);
-                    setMenuOpen(false);
-                  }}
+                  onClick={() => goToSection(link.id)}
                 >
                   {link.label}
-                </Link>
+                </button>
               </li>
             ))}
           </ul>
@@ -215,17 +267,14 @@ export function Header() {
 
         <CartButton variant="menu" onClick={() => setMenuOpen(false)} />
 
-        <Link
-          href="/#produtos"
+        <button
+          type="button"
           className="btn btn--primary mobile-menu__cta"
-          onClick={() => {
-            setActiveId('produtos');
-            setMenuOpen(false);
-          }}
+          onClick={() => goToSection('produtos')}
         >
           <i className="fa-solid fa-bolt" aria-hidden="true" />
           Ver Produtos
-        </Link>
+        </button>
       </div>
     </header>
   );

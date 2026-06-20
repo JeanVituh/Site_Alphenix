@@ -2118,3 +2118,43 @@ main,
     font-size: 0.62rem;
   }
 }
+
+/* ================================================================
+   FIX — Clique/scroll do menu mobile
+   O menu precisa ficar fora do fluxo do header para receber toque
+   corretamente no celular, e os itens agora são <button>.
+   ================================================================ */
+.header {
+  overflow: visible;
+}
+
+.nav__link,
+.mobile-menu__link,
+.header__cta,
+.mobile-menu__cta {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.mobile-menu {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  right: 0;
+  z-index: calc(var(--z-header) + 10);
+  max-height: calc(100dvh - var(--header-h));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-menu__link {
+  width: 100%;
+  text-align: left;
+}
+
+.mobile-menu__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
