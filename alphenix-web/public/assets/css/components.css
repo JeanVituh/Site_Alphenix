@@ -2262,3 +2262,25 @@ main,
     font-size: 0.56rem;
   }
 }
+/* Ajuste do botão WhatsApp no banner final */
+.cta-banner__btn {
+  width: auto;
+  min-width: 260px;
+  max-width: 360px;
+  padding: 14px 28px;
+  align-self: center;
+}
+
+@media (min-width: 861px) {
+  .cta-banner__btn {
+    justify-self: center;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 860px) {
+  .cta-banner__btn {
+    width: 100%;
+    max-width: 360px;
+  }
+}
