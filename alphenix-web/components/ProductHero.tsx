@@ -27,6 +27,34 @@ function assetUrl(path: string): string {
   return '/' + path;
 }
 
+function getSkuPrice(sku: ProductWithVariants['skus_variacoes'][number], basePrice: number): number {
+  return sku.price ?? basePrice;
+}
+
+/**
+ * SKU inicial = menor variação vendável.
+ * Isso mantém a página do produto coerente com o card do catálogo, que mostra
+ * “A partir de”. Assim o cliente não clica vendo um preço e cai direto em
+ * outra variação mais cara.
+ */
+function getInitialDisplaySku(product: ProductWithVariants) {
+  const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];
+
+  return [...skusVisiveis].sort((a, b) => {
+    const priceDiff = getSkuPrice(a, product.base_price) - getSkuPrice(b, product.base_price);
+    if (priceDiff !== 0) return priceDiff;
+
+    // Em empate, prioriza pronta entrega.
+    const stockDiff = Number(b.stock > 0) - Number(a.stock > 0);
+    if (stockDiff !== 0) return stockDiff;
+
+    // Em novo empate, prioriza Pote apenas para manter capa mais comercial.
+    const aIsPote = a.tipos_embalagem?.nome === 'Pote';
+    const bIsPote = b.tipos_embalagem?.nome === 'Pote';
+    return Number(bIsPote) - Number(aIsPote);
+  })[0] ?? null;
+}
+
 // ── Props ────────────────────────────────────────────────────────
 interface Props {
   product: ProductWithVariants;
@@ -44,21 +72,16 @@ export function ProductHero({ product }: Props) {
   // Pega a primeira imagem principal disponível em skus_variacoes.image_url
   // Isso serve como imagem inicial da página.
 
+const initialDisplaySku = useMemo(() => getInitialDisplaySku(product), [product]);
+
 const initialSkuImage = useMemo(() => {
-  // Só considera variações vendáveis.
-  // available=false = desativada/inexistente; não deve puxar imagem nem entrar na seleção.
+  // A imagem inicial acompanha a menor variação vendável, mantendo coerência
+  // com o preço “A partir de” exibido no catálogo.
+  if (initialDisplaySku?.image_url) return initialDisplaySku.image_url;
+
   const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];
-
-  const skuPoteComImagem = skusVisiveis.find(
-    sku => sku.tipos_embalagem?.nome === 'Pote' && sku.image_url
-  );
-
-  const qualquerSkuComImagem = skusVisiveis.find(
-    sku => sku.image_url
-  );
-
-  return skuPoteComImagem?.image_url ?? qualquerSkuComImagem?.image_url ?? null;
-}, [product.skus_variacoes]);
+  return skusVisiveis.find(sku => sku.image_url)?.image_url ?? null;
+}, [initialDisplaySku, product.skus_variacoes]);
 
   const [skuMainImage, setSkuMainImage] = useState<string | null>(
     () => initialSkuImage ? assetUrl(initialSkuImage) : null
@@ -136,16 +159,15 @@ const initialSkuImage = useMemo(() => {
   }, [product.name, product.brand, product.description]);
 
   // ── Estado do preço/status da variação selecionada ─────────────
-  const [variantPrice, setVariantPrice] = useState(product.base_price);
+  const [variantPrice, setVariantPrice] = useState(() =>
+    initialDisplaySku ? getSkuPrice(initialDisplaySku, product.base_price) : product.base_price
+  );
 
   const [variantStatus, setVariantStatus] = useState<CtaStatus>(() => {
-    const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];
-    const firstSku = skusVisiveis.find(sku => sku.stock > 0) ?? skusVisiveis[0] ?? null;
-
     if (!product.skus_variacoes?.length) return 'comprar';
-    if (!firstSku) return 'indisponivel';
+    if (!initialDisplaySku) return 'indisponivel';
 
-    return firstSku.stock > 0 ? 'comprar' : 'encomenda';
+    return initialDisplaySku.stock > 0 ? 'comprar' : 'encomenda';
   });
 
   const handleVariantChange = useCallback(
@@ -286,10 +308,22 @@ const initialSkuImage = useMemo(() => {
             {/* Cabeçalho */}
             <div className="pdp-info__header">
               <div className="pdp-info__top-row">
-                <span className="pdp-brand">{product.brand}</span>
-                {product.badge && (
-                  <span className="pdp-badge">{product.badge}</span>
-                )}
+                <div className="pdp-info__badges">
+                  <span className="pdp-brand">{product.brand}</span>
+                  {product.badge && (
+                    <span className="pdp-badge">{product.badge}</span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="pdp-share-btn pdp-share-btn--icon"
+                  onClick={handleShare}
+                  aria-label={`Compartilhar ${product.name}`}
+                >
+                  <i className="fa-solid fa-share-nodes" aria-hidden="true" />
+                  <span>Compartilhar</span>
+                </button>
               </div>
 
               <h1 className="pdp-name">{product.name}</h1>
@@ -368,17 +402,6 @@ const initialSkuImage = useMemo(() => {
               </div>
             )}
 
-            {/* Compartilhar */}
-            <div className="pdp-cta-group">
-              <button
-                type="button"
-                className="pdp-share-btn"
-                onClick={handleShare}
-              >
-                <i className="fa-solid fa-share-nodes" aria-hidden="true" />
-                Compartilhar
-              </button>
-            </div>
 
           </div>{/* /pdp-info */}
 

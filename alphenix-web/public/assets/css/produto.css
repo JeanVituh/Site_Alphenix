@@ -296,6 +296,14 @@
 .pdp-info__top-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.pdp-info__badges {
+  display: flex;
+  align-items: center;
   gap: var(--sp-3);
   flex-wrap: wrap;
 }
@@ -446,6 +454,25 @@
   border-color: var(--clr-orange);
   color: var(--clr-orange);
   background: rgba(255, 107, 0, 0.05);
+}
+
+.pdp-share-btn--icon {
+  width: auto;
+  min-height: 38px;
+  padding: 9px 14px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .pdp-share-btn--icon {
+    padding: 9px 12px;
+  }
+
+  .pdp-share-btn--icon span {
+    display: none;
+  }
 }
 
 

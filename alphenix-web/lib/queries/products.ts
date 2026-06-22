@@ -180,7 +180,24 @@ const prices = skusAtivos.length > 0
   ? skusAtivos.map(s => s.price ?? product.base_price)
   : [product.base_price];
 
+const minPrice = prices.length > 0 ? Math.min(...prices) : product.base_price;
+
+// A capa do card acompanha, sempre que possível, a variação de menor preço.
+// Assim o card que mostra “A partir de” não usa uma imagem de uma variação
+// muito mais cara como capa principal.
+const cheapestSkusWithImage = skusAtivos
+  .filter(s => (s.price ?? product.base_price) === minPrice && s.image_url)
+  .sort((a, b) => {
+    const stockDiff = Number(b.stock > 0) - Number(a.stock > 0);
+    if (stockDiff !== 0) return stockDiff;
+
+    const aIsPote = getNomeEmbalagem(a) === 'Pote';
+    const bIsPote = getNomeEmbalagem(b) === 'Pote';
+    return Number(bIsPote) - Number(aIsPote);
+  });
+
 const coverSku =
+  cheapestSkusWithImage[0] ??
   skusEmEstoque.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
   skusAtivos.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
   skusEmEstoque.find(s => s.image_url) ??
@@ -190,7 +207,7 @@ const coverSku =
 return {
   ...product,
   skus_variacoes: undefined,
-  min_price: prices.length > 0 ? Math.min(...prices) : product.base_price,
+  min_price: minPrice,
   has_variants: skusAtivos.length > 1,
   cover_image_url: coverSku?.image_url ?? product.images?.[0] ?? null,
 } as unknown as ProductCard;

@@ -2094,6 +2094,15 @@ main,
   text-transform: uppercase;
 }
 
+.product-card__variation-note {
+  margin: 1px 0 0;
+  max-width: 220px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 @media (max-width: 640px) {
   .product-card__pricing--compact {
     gap: 5px;

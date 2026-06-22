@@ -46,10 +46,18 @@ function getSellableSkus(product: ProductWithVariants): SkuVariacao[] {
 function buildInitialSelection(product: ProductWithVariants): SelectedValues {
   const skusValidos = getSellableSkus(product);
 
-  const firstSku =
-    skusValidos.find(sku => sku.stock > 0) ??
-    skusValidos[0] ??
-    null;
+  // Seleção inicial = menor preço vendável.
+  // Isso evita a sensação de propaganda enganosa: o card mostra “A partir de”
+  // e a página abre exatamente na variação que gera aquele preço.
+  const firstSku = [...skusValidos].sort((a, b) => {
+    const priceA = a.price ?? product.base_price;
+    const priceB = b.price ?? product.base_price;
+    const priceDiff = priceA - priceB;
+    if (priceDiff !== 0) return priceDiff;
+
+    // Em empate, prioriza pronta entrega.
+    return Number(b.stock > 0) - Number(a.stock > 0);
+  })[0] ?? null;
 
   if (firstSku) {
     return {

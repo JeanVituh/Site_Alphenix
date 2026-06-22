@@ -317,6 +317,12 @@ function ProductCardItem({
           <span className="product-card__price-off product-card__price-off--compact">
             {PAYMENT_DISCOUNT_PERCENT}% OFF
           </span>
+
+          {product.has_variants && (
+            <p className="product-card__variation-note">
+              Menor variação. O preço muda conforme sabor/tamanho.
+            </p>
+          )}
         </div>
 
         <div className="product-card__actions">
@@ -331,10 +337,10 @@ function ProductCardItem({
           <Link
             href={`/produtos/${product.slug}`}
             className="btn btn--whatsapp"
-            aria-label={`Escolher variação de ${product.name}`}
+            aria-label={`Ver opções e preços de ${product.name}`}
           >
             <i className="fa-solid fa-cart-plus" aria-hidden="true" />
-            Escolher Variação
+            Ver opções e preços
           </Link>
         </div>
       </div>
