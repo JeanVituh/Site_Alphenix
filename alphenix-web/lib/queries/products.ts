@@ -41,6 +41,16 @@ function dedupEmbalagens(skus: SkuVariacao[]): TipoEmbalagem[] {
   return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+const DUX_WHEY_CARAMEL_COVER =
+  'assets/images/products/Dux/whey-concentrado-dux-caramelo-salgado-450g-pote.jpg';
+
 // ── Query principal ────────────────────────────────────────────────
 
 export async function getProductBySlug(slug: string): Promise<ProductWithVariants | null> {
@@ -133,6 +143,7 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
   stock,
   available,
   image_url,
+  sabores ( nome ),
   tipos_embalagem ( nome )
 )
     `)
@@ -156,6 +167,7 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
 
   // O Supabase/TypeScript pode entender relacionamento como array,
   // então aceitamos os dois formatos.
+  sabores: { nome: string }[] | { nome: string } | null;
   tipos_embalagem: { nome: string }[] | { nome: string } | null;
 };
 
@@ -172,6 +184,14 @@ const getNomeEmbalagem = (sku: RawSku): string | null => {
     : sku.tipos_embalagem;
 
   return embalagem?.nome ?? null;
+};
+
+const getNomeSabor = (sku: RawSku): string | null => {
+  const sabor = Array.isArray(sku.sabores)
+    ? sku.sabores[0]
+    : sku.sabores;
+
+  return sabor?.nome ?? null;
 };
 
 const skusEmEstoque = skusAtivos.filter(s => s.stock > 0);
@@ -196,20 +216,40 @@ const cheapestSkusWithImage = skusAtivos
     return Number(bIsPote) - Number(aIsPote);
   });
 
+const isDuxWheyConcentrado =
+  normalizeText(product.brand).includes('dux') &&
+  normalizeText(product.name).includes('whey');
+
+// Ajuste específico de capa: no card da home, o DUX Whey abre com a imagem
+// de Caramelo Salgado 450g, que encaixa melhor no card e continua coerente
+// com o preço “A partir de” do menor tamanho.
+const preferredCoverSku = isDuxWheyConcentrado
+  ? skusAtivos.find(s =>
+      normalizeText(getNomeSabor(s)).includes('caramelo salgado') &&
+      normalizeText(s.image_url).includes('450g') &&
+      s.image_url
+    ) ??
+    skusAtivos.find(s =>
+      normalizeText(getNomeSabor(s)).includes('caramelo salgado') &&
+      s.image_url
+    )
+  : null;
+
 const coverSku =
+  preferredCoverSku ??
   cheapestSkusWithImage[0] ??
   skusEmEstoque.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
   skusAtivos.find(s => getNomeEmbalagem(s) === 'Pote' && s.image_url) ??
   skusEmEstoque.find(s => s.image_url) ??
   skusAtivos.find(s => s.image_url) ??
   null;
-  
+
 return {
   ...product,
   skus_variacoes: undefined,
   min_price: minPrice,
   has_variants: skusAtivos.length > 1,
-  cover_image_url: coverSku?.image_url ?? product.images?.[0] ?? null,
+  cover_image_url: coverSku?.image_url ?? (isDuxWheyConcentrado ? DUX_WHEY_CARAMEL_COVER : product.images?.[0] ?? null),
 } as unknown as ProductCard;
 });
 }
