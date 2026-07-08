@@ -119,8 +119,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!input.available || !input.skuId) return false;
 
     const fulfillment: CartFulfillment = input.stock > 0 ? 'pronta_entrega' : 'encomenda';
+    const rawQuantity = input.quantity ?? 1;
+    const requestedQuantity = Number.isFinite(rawQuantity)
+      ? Math.max(1, Math.floor(rawQuantity))
+      : 1;
 
-    const newItem: CartItem = {
+    const itemCandidate: CartItem = {
       skuId: input.skuId,
       productId: input.productId,
       productSlug: input.productSlug,
@@ -131,10 +135,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       tamanho: input.tamanho,
       embalagem: input.embalagem,
       unitPrice: input.unitPrice,
-      quantity: 1,
+      quantity: requestedQuantity,
       stock: input.stock,
       fulfillment,
       addedAt: new Date().toISOString(),
+    };
+
+    const newItem: CartItem = {
+      ...itemCandidate,
+      quantity: normalizeCartQuantity(itemCandidate, requestedQuantity),
     };
 
     setItems(prev => {
@@ -155,7 +164,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         return {
           ...updatedItem,
-          quantity: normalizeCartQuantity(updatedItem, item.quantity + 1),
+          quantity: normalizeCartQuantity(updatedItem, item.quantity + requestedQuantity),
         };
       });
     });

@@ -211,6 +211,7 @@
 /* ── Mobile Menu ─────────────────────────────────── */
 .mobile-menu {
   position: absolute;
+  z-index: 1;
   top: 100%;
   left: 0;
   right: 0;
@@ -222,6 +223,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+  max-height: calc(100dvh - var(--header-h));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transform: translateY(-8px);
   opacity: 0;
   pointer-events: none;
@@ -244,16 +249,20 @@
 
 .mobile-menu__link {
   display: block;
+  width: 100%;
   padding: var(--sp-3) var(--sp-4);
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--clr-text-md);
   border-radius: var(--radius-sm);
   letter-spacing: 0.04em;
+  text-align: left;
+  touch-action: manipulation;
   transition: color var(--t-fast), background var(--t-fast);
 }
 
-.mobile-menu__link:hover {
+.mobile-menu__link:hover,
+.mobile-menu__link.active {
   color: var(--clr-text);
   background: var(--clr-bg-card);
 }
@@ -1345,7 +1354,8 @@
    BODY STATE HELPERS
    ══════════════════════════════════════════════════════ */
 body.menu-open {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Ensure page starts below loader */
@@ -1922,13 +1932,18 @@ body.loaded .header {
    Atenção: não sobrescreva o max-width do .container aqui.
    Quando o .container vira max-width: 100%, os cards ficam gigantes no PC. */
 main,
-.header,
 .hero,
 .products-section,
 .features-section,
 .cta-banner,
 .footer {
   overflow-x: clip;
+}
+
+/* O menu mobile fica fora da altura fixa do header. O header precisa
+   manter overflow visível para que todos os itens recebam toque no iOS. */
+.header {
+  overflow: visible;
 }
 
 .hero__inner,

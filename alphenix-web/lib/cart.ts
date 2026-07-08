@@ -46,6 +46,7 @@ export interface CartAddInput {
   unitPrice: number;
   stock: number;
   available: boolean;
+  quantity?: number;
 }
 
 export interface CartTotals {

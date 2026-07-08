@@ -142,6 +142,7 @@ export function VariantSelector({
   const [selectedValues, setSelectedValues] = useState<SelectedValues>(
     () => buildInitialSelection(product)
   );
+  const [quantity, setQuantity] = useState(1);
 
   // ── Quais dimensões o produto realmente usa ───────────────────
   const usaSabor = product.sabores_disponiveis.length > 0;
@@ -241,6 +242,7 @@ export function VariantSelector({
     if (!primeiroSaborVisivel) return;
 
     const timeoutId = window.setTimeout(() => {
+      setQuantity(1);
       setSelectedValues(prev => ({
         ...prev,
         saborId: primeiroSaborVisivel.id,
@@ -267,9 +269,24 @@ export function VariantSelector({
   const selectedTamanho = product.tamanhos_disponiveis.find(t => t.id === selectedValues.tamanhoId) ?? null;
   const selectedEmbalagem = product.tipos_embalagem_disponiveis.find(e => e.id === selectedValues.embalagemId) ?? null;
 
+  const maxQuantity = statusCta === 'comprar' && currentSku?.stock
+    ? Math.max(1, currentSku.stock)
+    : 99;
+
+  const canDecreaseQuantity = statusCta !== 'indisponivel' && quantity > 1;
+  const canIncreaseQuantity = statusCta !== 'indisponivel' && quantity < maxQuantity;
+
+  const clampQuantity = useCallback((value: number) => {
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(maxQuantity, Math.max(1, Math.floor(value)));
+  }, [maxQuantity]);
+
   // ── Handler: ao clicar em uma opção ──────────────────────────
   const handleSelect = useCallback(
     (dimensao: VariantDimension, valueId: string) => {
+      // Cada nova combinação começa em 1 para nunca herdar uma quantidade
+      // maior do que o estoque do SKU recém-selecionado.
+      setQuantity(1);
       setSelectedValues(prev => {
         const next = { ...prev, [dimensao]: valueId };
 
@@ -316,7 +333,7 @@ export function VariantSelector({
   const handleAddToCart = useCallback(() => {
     if (!currentSku || !currentSku.available || statusCta === 'indisponivel') return;
 
-    addItem({
+    const added = addItem({
       skuId: currentSku.id,
       productId: product.id,
       productSlug: product.slug,
@@ -329,7 +346,10 @@ export function VariantSelector({
       unitPrice: currentPrice,
       stock: currentSku.stock,
       available: currentSku.available,
+      quantity,
     });
+
+    if (added) setQuantity(1);
   }, [
     addItem,
     currentSku,
@@ -342,6 +362,7 @@ export function VariantSelector({
     selectedTamanho?.nome,
     selectedEmbalagem?.nome,
     currentPrice,
+    quantity,
   ]);
 
   const renderUnavailableLine = (isAvailable: boolean) => {
@@ -496,6 +517,49 @@ export function VariantSelector({
           <span className={styles.badgeSoldOut}>Combinação Indisponível</span>
         </div>
       )}
+
+
+      {/* ── Quantidade ── */}
+      <div className={styles.quantitySection}>
+        <label className={styles.quantityLabel} htmlFor="product-quantity">
+          Quantidade
+        </label>
+
+        <div className={styles.quantityControl}>
+          <button
+            type="button"
+            className={styles.quantityButton}
+            onClick={() => setQuantity(value => clampQuantity(value - 1))}
+            disabled={!canDecreaseQuantity}
+            aria-label="Diminuir quantidade"
+          >
+            <i className="fa-solid fa-minus" aria-hidden="true" />
+          </button>
+
+          <input
+            id="product-quantity"
+            className={styles.quantityInput}
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={maxQuantity}
+            value={quantity}
+            onChange={(event) => setQuantity(clampQuantity(Number(event.target.value)))}
+            disabled={statusCta === 'indisponivel'}
+            aria-label="Quantidade do produto"
+          />
+
+          <button
+            type="button"
+            className={styles.quantityButton}
+            onClick={() => setQuantity(value => clampQuantity(value + 1))}
+            disabled={!canIncreaseQuantity}
+            aria-label="Aumentar quantidade"
+          >
+            <i className="fa-solid fa-plus" aria-hidden="true" />
+          </button>
+        </div>
+      </div>
 
       {/* ── CTA Carrinho ── */}
       <button

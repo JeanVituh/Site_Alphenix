@@ -173,6 +173,85 @@
   border:        1px solid rgba(255, 69, 0, 0.3);
 }
 
+
+/* ── Seletor de quantidade ───────────────────────────────────── */
+.quantitySection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-top: var(--sp-1);
+}
+
+.quantityLabel {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--clr-text-md);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.quantityControl {
+  display: inline-grid;
+  grid-template-columns: 42px 54px 42px;
+  align-items: stretch;
+  min-height: 42px;
+  background: var(--clr-bg-card);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.quantityButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--clr-text);
+  background: transparent;
+  transition: background var(--t-fast), color var(--t-fast);
+  touch-action: manipulation;
+}
+
+.quantityButton:hover:not(:disabled) {
+  color: var(--clr-orange);
+  background: var(--clr-bg-elevated);
+}
+
+.quantityButton:disabled {
+  color: var(--clr-text-xs);
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.quantityInput {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-inline: 1px solid var(--clr-border);
+  outline: 0;
+  color: var(--clr-text);
+  background: var(--clr-bg-elevated);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 800;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.quantityInput::-webkit-outer-spin-button,
+.quantityInput::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.quantityInput:disabled {
+  color: var(--clr-text-xs);
+  cursor: not-allowed;
+}
+
 /* ── Botão CTA Carrinho ──────────────────────────────────────── */
 .ctaBtn {
   display: flex;
@@ -262,5 +341,14 @@
 
   .selectionSummaryText {
     width: 100%;
+  }
+
+  .quantitySection {
+    align-items: center;
+  }
+
+  .quantityControl {
+    grid-template-columns: 40px 50px 40px;
+    min-height: 40px;
   }
 }

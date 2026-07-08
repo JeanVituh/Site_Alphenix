@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CartButton } from '@/components/cart/CartButton';
 
 const NAV_LINKS = [
@@ -29,28 +29,61 @@ export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeId, setActiveId] = useState<SectionId>('inicio');
 
-  function getHeaderOffset() {
-    return headerRef.current?.offsetHeight ?? 0;
-  }
+  const getHeaderOffset = useCallback(() => {
+    return headerRef.current?.getBoundingClientRect().height ?? 0;
+  }, []);
 
-  function scrollToSection(sectionId: SectionId, behavior: ScrollBehavior = 'smooth') {
+  const getSectionTop = useCallback((sectionId: SectionId) => {
     const section = document.getElementById(sectionId);
-    if (!section) return;
+    if (!section) return null;
 
-    const top = Math.max(
+    return Math.max(
       section.getBoundingClientRect().top + window.scrollY - getHeaderOffset(),
       0,
     );
+  }, [getHeaderOffset]);
+
+  const scrollToSection = useCallback((
+    sectionId: SectionId,
+    behavior: ScrollBehavior = 'smooth',
+  ) => {
+    const top = getSectionTop(sectionId);
+    if (top === null) return false;
 
     window.scrollTo({ top, behavior });
-  }
+    return true;
+  }, [getSectionTop]);
+
+  const scheduleSectionScroll = useCallback((
+    sectionId: SectionId,
+    behavior: ScrollBehavior = 'smooth',
+  ) => {
+    // Aguarda o React fechar o menu e o navegador recalcular o layout.
+    // Duas animações são mais confiáveis no Safari/Chrome mobile do que
+    // tentar rolar no mesmo instante do toque.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        scrollToSection(sectionId, behavior);
+      });
+    });
+
+    // Fallback: caso o navegador interrompa a rolagem durante o fechamento
+    // do menu, posiciona a página corretamente depois da animação.
+    window.setTimeout(() => {
+      const expectedTop = getSectionTop(sectionId);
+      if (expectedTop === null) return;
+
+      if (Math.abs(window.scrollY - expectedTop) > 12) {
+        window.scrollTo({ top: expectedTop, behavior: 'auto' });
+      }
+    }, 700);
+  }, [getSectionTop, scrollToSection]);
 
   function closeMobileMenuNow() {
     setMenuOpen(false);
 
-    // Remove a trava do scroll na hora do clique. No celular, se o body
-    // continuar com overflow hidden durante a navegação por âncora, a página
-    // pode não descer mesmo com o link certo.
+    // Compatibilidade com versões anteriores do menu, que adicionavam esta
+    // classe e bloqueavam a rolagem do body no celular.
     document.body.classList.remove('menu-open');
   }
 
@@ -58,24 +91,20 @@ export function Header() {
     closeMobileMenuNow();
     setActiveId(sectionId);
 
-    // Se estiver em uma página de produto, volta para a home e guarda
-    // qual seção deve abrir depois do carregamento.
-    if (window.location.pathname !== '/') {
+    // Em uma página de produto, volta para a home e guarda a seção que deve
+    // ser aberta depois que a página terminar de carregar.
+    if (pathname !== '/') {
       sessionStorage.setItem(PENDING_SCROLL_KEY, sectionId);
       window.location.assign(`/#${sectionId}`);
       return;
     }
 
+    const nextUrl = `${window.location.pathname}${window.location.search}#${sectionId}`;
     if (window.location.hash !== `#${sectionId}`) {
-      window.history.pushState(null, '', `/#${sectionId}`);
+      window.history.pushState(null, '', nextUrl);
     }
 
-    // Faz a rolagem manualmente, sem depender do comportamento automático
-    // do Link/âncora. Os retries deixam estável no mobile, mesmo com menu
-    // fechando, imagens carregando e altura do layout mudando.
-    window.requestAnimationFrame(() => scrollToSection(sectionId));
-    window.setTimeout(() => scrollToSection(sectionId), 80);
-    window.setTimeout(() => scrollToSection(sectionId), 220);
+    scheduleSectionScroll(sectionId);
   }
 
   // ── Header com fundo ao rolar a página ──────────────────────
@@ -90,14 +119,14 @@ export function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // ── Trava o scroll do body quando o menu mobile está aberto ──
+  // ── Garante que nenhuma trava antiga permaneça no body ──────
   useEffect(() => {
-    document.body.classList.toggle('menu-open', menuOpen);
+    document.body.classList.remove('menu-open');
 
     return () => {
       document.body.classList.remove('menu-open');
     };
-  }, [menuOpen]);
+  }, []);
 
   // ── Fecha o menu mobile ao clicar fora ou apertar Esc ───────
   useEffect(() => {
@@ -134,18 +163,33 @@ export function Header() {
     if (!matchingLink) return;
 
     sessionStorage.removeItem(PENDING_SCROLL_KEY);
-    setActiveId(matchingLink.id);
+    document.body.classList.remove('menu-open');
+    window.setTimeout(() => {
+      setActiveId(matchingLink.id);
+      scheduleSectionScroll(matchingLink.id, 'auto');
+    }, 120);
+  }, [pathname, scheduleSectionScroll]);
 
-    window.setTimeout(() => scrollToSection(matchingLink.id, 'auto'), 120);
-    window.setTimeout(() => scrollToSection(matchingLink.id, 'auto'), 300);
-  }, [pathname]);
+  // ── Suporte aos botões voltar/avançar do navegador ──────────
+  useEffect(() => {
+    if (pathname !== '/') return;
+
+    function onHashChange() {
+      const hashId = window.location.hash.replace('#', '') as SectionId;
+      const matchingLink = NAV_LINKS.find((link) => link.id === hashId);
+      if (!matchingLink) return;
+
+      setActiveId(matchingLink.id);
+      scheduleSectionScroll(matchingLink.id, 'auto');
+    }
+
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [pathname, scheduleSectionScroll]);
 
   // ── Destaca o link correto do menu conforme a seção atual ─────
   useEffect(() => {
-    if (pathname !== '/') {
-      setActiveId('inicio');
-      return;
-    }
+    if (pathname !== '/') return;
 
     let frameId: number | null = null;
 
@@ -189,7 +233,9 @@ export function Header() {
       window.removeEventListener('scroll', scheduleSync);
       window.removeEventListener('resize', scheduleSync);
     };
-  }, [pathname]);
+  }, [getHeaderOffset, pathname]);
+
+  const displayedActiveId: SectionId = pathname === '/' ? activeId : 'inicio';
 
   return (
     <header ref={headerRef} id="header" className={`header${scrolled ? ' scrolled' : ''}`}>
@@ -205,7 +251,7 @@ export function Header() {
               <li key={link.id}>
                 <button
                   type="button"
-                  className={`nav__link${activeId === link.id ? ' active' : ''}`}
+                  className={`nav__link${displayedActiveId === link.id ? ' active' : ''}`}
                   onClick={() => goToSection(link.id)}
                 >
                   {link.label}
@@ -216,7 +262,6 @@ export function Header() {
         </nav>
 
         <div className="header__actions">
-          {/* Carrinho sempre visível no header, inclusive no mobile */}
           <CartButton />
 
           <button
@@ -234,7 +279,7 @@ export function Header() {
             aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
             aria-expanded={menuOpen}
             aria-controls="mobileMenu"
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setMenuOpen((open) => !open)}
           >
             <span />
             <span />
@@ -243,7 +288,6 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <div
         className={`mobile-menu${menuOpen ? ' active' : ''}`}
         id="mobileMenu"
@@ -255,7 +299,7 @@ export function Header() {
               <li key={link.id}>
                 <button
                   type="button"
-                  className="mobile-menu__link"
+                  className={`mobile-menu__link${displayedActiveId === link.id ? ' active' : ''}`}
                   onClick={() => goToSection(link.id)}
                 >
                   {link.label}
