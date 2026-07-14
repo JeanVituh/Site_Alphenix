@@ -1,13 +1,12 @@
 'use client';
 // ================================================================
 //  ALPHENIX — VariantSelector (components/VariantSelector.tsx)
-//  v5: seleção de SKU + indicação visual minimalista de encomenda
 //
 //  Regra:
-//  - available=true  → a variação existe/vende e pode aparecer no site
-//  - available=false → a variação fica escondida/desativada
-//  - stock > 0      → adiciona ao carrinho como pronta entrega
-//  - stock = 0      → adiciona ao carrinho como encomenda, desde que available=true
+//  - stock > 0                         → pronta entrega
+//  - stock = 0 e available = true      → sob encomenda
+//  - available = false                 → indisponível
+//  - sem SKU correspondente            → combinação inexistente
 // ================================================================
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -15,13 +14,11 @@ import { useCart } from '@/components/cart/CartContext';
 import type {
   ProductWithVariants,
   SelectedValues,
-  OptionAvailability,
   SkuVariacao,
   CtaStatus,
 } from '@/lib/types';
 import styles from './VariantSelector.module.css';
 
-// ── Props ────────────────────────────────────────────────────────
 interface VariantSelectorProps {
   product: ProductWithVariants;
   /** Chamado quando o SKU resolvido tem uma imagem específica. */
@@ -30,106 +27,97 @@ interface VariantSelectorProps {
   onVariantChange?: (data: { price: number; status: CtaStatus }) => void;
 }
 
+type AvailabilityMode = 'ready' | 'order';
 type VariantDimension = keyof SelectedValues;
-type VariantOptionStatus = 'ready' | 'order' | 'unavailable';
-type OptionStatusMap = Record<'sabor' | 'tamanho' | 'embalagem', Record<string, VariantOptionStatus>>;
 
-// ── Helpers ──────────────────────────────────────────────────────
 function getSellableSkus(product: ProductWithVariants): SkuVariacao[] {
   return product.skus_variacoes.filter(sku => sku.available);
 }
 
-/**
- * Monta a seleção inicial usando somente SKUs vendáveis.
- * Prioriza pronta entrega, mas aceita SKU sem estoque para encomenda.
- */
-function buildInitialSelection(product: ProductWithVariants): SelectedValues {
-  const skusValidos = getSellableSkus(product);
+function isSkuInMode(sku: SkuVariacao, mode: AvailabilityMode): boolean {
+  if (!sku.available) return false;
+  return mode === 'ready' ? sku.stock > 0 : sku.stock === 0;
+}
 
-  // Seleção inicial = menor preço vendável.
-  // Isso evita a sensação de propaganda enganosa: o card mostra “A partir de”
-  // e a página abre exatamente na variação que gera aquele preço.
-  const firstSku = [...skusValidos].sort((a, b) => {
+function getInitialAvailability(product: ProductWithVariants): AvailabilityMode {
+  const skus = getSellableSkus(product);
+  return skus.some(sku => sku.stock > 0) ? 'ready' : 'order';
+}
+
+function getPreferredSku(
+  product: ProductWithVariants,
+  skus: SkuVariacao[]
+): SkuVariacao | null {
+  return [...skus].sort((a, b) => {
     const priceA = a.price ?? product.base_price;
     const priceB = b.price ?? product.base_price;
     const priceDiff = priceA - priceB;
     if (priceDiff !== 0) return priceDiff;
 
-    // Em empate, prioriza pronta entrega.
-    return Number(b.stock > 0) - Number(a.stock > 0);
+    const aIsPote = a.tipos_embalagem?.nome === 'Pote';
+    const bIsPote = b.tipos_embalagem?.nome === 'Pote';
+    return Number(bIsPote) - Number(aIsPote);
   })[0] ?? null;
-
-  if (firstSku) {
-    return {
-      saborId: firstSku.sabor_id ?? undefined,
-      tamanhoId: firstSku.tamanho_id ?? undefined,
-      embalagemId: firstSku.tipo_embalagem_id ?? undefined,
-    };
-  }
-
-  return {};
 }
 
-function getSkuStatus(sku: SkuVariacao | null): VariantOptionStatus {
-  if (!sku || !sku.available) return 'unavailable';
-  return sku.stock > 0 ? 'ready' : 'order';
+function selectionFromSku(sku: SkuVariacao | null): SelectedValues {
+  if (!sku) return {};
+
+  return {
+    saborId: sku.sabor_id ?? undefined,
+    tamanhoId: sku.tamanho_id ?? undefined,
+    embalagemId: sku.tipo_embalagem_id ?? undefined,
+  };
 }
 
-function getOptionStatusLabel(status: VariantOptionStatus): string {
-  if (status === 'ready') return 'Pronta entrega';
-  if (status === 'order') return 'Encomenda';
-  return 'Indisponível';
+function buildInitialSelection(product: ProductWithVariants): SelectedValues {
+  const mode = getInitialAvailability(product);
+  const skusDoModo = getSellableSkus(product).filter(sku => isSkuInMode(sku, mode));
+  return selectionFromSku(getPreferredSku(product, skusDoModo));
 }
 
-function mapStatusToAvailability(
-  statusMap: Record<string, VariantOptionStatus>
-): Record<string, boolean> {
-  return Object.fromEntries(
-    Object.entries(statusMap).map(([id, status]) => [id, status !== 'unavailable'])
+function skuMatchesSelection(
+  sku: SkuVariacao,
+  selectedValues: SelectedValues,
+  usaSabor: boolean,
+  usaTamanho: boolean,
+  usaEmbalagem: boolean
+): boolean {
+  return (
+    (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
+    (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
+    (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
   );
 }
 
 /**
- * Mesmo critério usado no fallback de seleção: tenta preservar sabor, tamanho e
- * embalagem atuais e dá uma pequena prioridade para pronta entrega.
+ * Entre os candidatos válidos, tenta preservar as escolhas atuais. Isso evita
+ * trocar sabor/tamanho sem necessidade quando o usuário muda uma dimensão.
  */
-function scoreSkuForSelection(
-  sku: SkuVariacao,
-  index: number,
-  dimensao: VariantDimension,
-  prev: SelectedValues
-): { sku: SkuVariacao; score: number; index: number } {
-  let score = 0;
-
-  if (dimensao !== 'saborId' && prev.saborId && sku.sabor_id === prev.saborId) {
-    score += 100;
-  }
-  if (dimensao !== 'tamanhoId' && prev.tamanhoId && sku.tamanho_id === prev.tamanhoId) {
-    score += 80;
-  }
-  if (dimensao !== 'embalagemId' && prev.embalagemId && sku.tipo_embalagem_id === prev.embalagemId) {
-    score += 60;
-  }
-  if (sku.stock > 0) {
-    score += 5;
-  }
-
-  return { sku, score, index };
-}
-
-function pickBestSkuForOption(
+function pickSkuPreservingSelection(
+  product: ProductWithVariants,
   candidates: SkuVariacao[],
-  dimensao: VariantDimension,
   selectedValues: SelectedValues
 ): SkuVariacao | null {
   if (!candidates.length) return null;
 
-  return candidates
-    .map((sku, index) => scoreSkuForSelection(sku, index, dimensao, selectedValues))
-    .sort((a, b) => b.score - a.score || a.index - b.index)[0].sku;
+  const scored = candidates.map((sku, index) => {
+    let score = 0;
+    if (selectedValues.embalagemId && sku.tipo_embalagem_id === selectedValues.embalagemId) score += 100;
+    if (selectedValues.tamanhoId && sku.tamanho_id === selectedValues.tamanhoId) score += 80;
+    if (selectedValues.saborId && sku.sabor_id === selectedValues.saborId) score += 60;
+    return { sku, score, index };
+  });
+
+  const bestScore = Math.max(...scored.map(item => item.score));
+  const bestCandidates = scored
+    .filter(item => item.score === bestScore)
+    .sort((a, b) => a.index - b.index)
+    .map(item => item.sku);
+
+  return getPreferredSku(product, bestCandidates);
 }
 
-// ── Componente Principal ─────────────────────────────────────────
 export function VariantSelector({
   product,
   onImageChange,
@@ -138,125 +126,82 @@ export function VariantSelector({
   const { addItem } = useCart();
   const skusValidos = useMemo(() => getSellableSkus(product), [product]);
 
-  // ── Estado: valores selecionados por dimensão ─────────────────
+  const readySkus = useMemo(
+    () => skusValidos.filter(sku => isSkuInMode(sku, 'ready')),
+    [skusValidos]
+  );
+  const orderSkus = useMemo(
+    () => skusValidos.filter(sku => isSkuInMode(sku, 'order')),
+    [skusValidos]
+  );
+
+  const hasReadySkus = readySkus.length > 0;
+  const hasOrderSkus = orderSkus.length > 0;
+
+  const [availabilityMode, setAvailabilityMode] = useState<AvailabilityMode>(
+    () => getInitialAvailability(product)
+  );
   const [selectedValues, setSelectedValues] = useState<SelectedValues>(
     () => buildInitialSelection(product)
   );
   const [quantity, setQuantity] = useState(1);
 
-  // ── Quais dimensões o produto realmente usa ───────────────────
   const usaSabor = product.sabores_disponiveis.length > 0;
   const usaTamanho = product.tamanhos_disponiveis.length > 0;
   const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
 
-  // ── LÓGICA 1: Encontrar o SKU que combina com a seleção atual ──
+  const skusDoModo = availabilityMode === 'ready' ? readySkus : orderSkus;
+
   const currentSku = useMemo<SkuVariacao | null>(() => {
-    return (
-      skusValidos.find(sku =>
-        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
-        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
-        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
-      ) ?? null
+    return skusDoModo.find(sku =>
+      skuMatchesSelection(
+        sku,
+        selectedValues,
+        usaSabor,
+        usaTamanho,
+        usaEmbalagem
+      )
+    ) ?? null;
+  }, [skusDoModo, selectedValues, usaSabor, usaTamanho, usaEmbalagem]);
+
+  // Ordem progressiva: disponibilidade → embalagem → tamanho → sabor.
+  const visibleEmbalagens = useMemo(() => {
+    return product.tipos_embalagem_disponiveis.filter(embalagem =>
+      skusDoModo.some(sku => sku.tipo_embalagem_id === embalagem.id)
     );
-  }, [selectedValues, skusValidos, usaSabor, usaTamanho, usaEmbalagem]);
+  }, [product.tipos_embalagem_disponiveis, skusDoModo]);
 
-  // ── LÓGICA 2: status de cada botão de opção ────────────────────
-  // Status do botão = resultado mais provável ao clicar naquela opção.
-  // Importante: encomenda continua clicável; indisponível/inexistente não.
-  const optionStatuses = useMemo<OptionStatusMap>(() => {
-    const sabor: Record<string, VariantOptionStatus> = {};
-    const tamanho: Record<string, VariantOptionStatus> = {};
-    const embalagem: Record<string, VariantOptionStatus> = {};
-
-    for (const s of product.sabores_disponiveis) {
-      const candidates = skusValidos.filter(sku =>
-        sku.sabor_id === s.id &&
-        (!usaTamanho || !selectedValues.tamanhoId || sku.tamanho_id === selectedValues.tamanhoId) &&
-        (!usaEmbalagem || !selectedValues.embalagemId || sku.tipo_embalagem_id === selectedValues.embalagemId)
-      );
-
-      sabor[s.id] = getSkuStatus(
-        pickBestSkuForOption(candidates, 'saborId', selectedValues)
-      );
-    }
-
-    // Tamanho precisa ser livre: se existe qualquer SKU vendável daquele tamanho,
-    // deixa clicar. O handleSelect abaixo resolve sabor/embalagem automaticamente.
-    for (const t of product.tamanhos_disponiveis) {
-      const candidates = skusValidos.filter(sku => sku.tamanho_id === t.id);
-
-      tamanho[t.id] = getSkuStatus(
-        pickBestSkuForOption(candidates, 'tamanhoId', selectedValues)
-      );
-    }
-
-    // Embalagem respeita o tamanho atual, mas não prende no sabor atual.
-    for (const e of product.tipos_embalagem_disponiveis) {
-      const candidates = skusValidos.filter(sku =>
-        sku.tipo_embalagem_id === e.id &&
-        (!usaTamanho || !selectedValues.tamanhoId || sku.tamanho_id === selectedValues.tamanhoId)
-      );
-
-      embalagem[e.id] = getSkuStatus(
-        pickBestSkuForOption(candidates, 'embalagemId', selectedValues)
-      );
-    }
-
-    return { sabor, tamanho, embalagem };
+  const visibleTamanhos = useMemo(() => {
+    return product.tamanhos_disponiveis.filter(tamanho =>
+      skusDoModo.some(sku =>
+        sku.tamanho_id === tamanho.id &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
+      )
+    );
   }, [
-    product.sabores_disponiveis,
     product.tamanhos_disponiveis,
-    product.tipos_embalagem_disponiveis,
-    skusValidos,
-    selectedValues,
-    usaTamanho,
+    skusDoModo,
     usaEmbalagem,
+    selectedValues.embalagemId,
   ]);
-
-  const disponibilidade = useMemo<OptionAvailability>(() => {
-    return {
-      sabor: mapStatusToAvailability(optionStatuses.sabor),
-      tamanho: mapStatusToAvailability(optionStatuses.tamanho),
-      embalagem: mapStatusToAvailability(optionStatuses.embalagem),
-    };
-  }, [optionStatuses]);
 
   const visibleSabores = useMemo(() => {
-    return product.sabores_disponiveis.filter(
-      sabor => disponibilidade.sabor[sabor.id] ?? false
+    return product.sabores_disponiveis.filter(sabor =>
+      skusDoModo.some(sku =>
+        sku.sabor_id === sabor.id &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null)) &&
+        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null))
+      )
     );
-  }, [product.sabores_disponiveis, disponibilidade.sabor]);
-
-  // Se o sabor selecionado deixar de existir ao trocar tamanho/embalagem,
-  // seleciona o primeiro sabor válido para a nova combinação.
-  useEffect(() => {
-    if (product.sabores_disponiveis.length === 0) return;
-
-    const saborAtualAindaExiste = visibleSabores.some(
-      sabor => sabor.id === selectedValues.saborId
-    );
-
-    if (saborAtualAindaExiste) return;
-
-    const primeiroSaborVisivel = visibleSabores[0];
-    if (!primeiroSaborVisivel) return;
-
-    const timeoutId = window.setTimeout(() => {
-      setQuantity(1);
-      setSelectedValues(prev => ({
-        ...prev,
-        saborId: primeiroSaborVisivel.id,
-      }));
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
   }, [
-    product.sabores_disponiveis.length,
-    selectedValues.saborId,
-    visibleSabores,
+    product.sabores_disponiveis,
+    skusDoModo,
+    usaEmbalagem,
+    usaTamanho,
+    selectedValues.embalagemId,
+    selectedValues.tamanhoId,
   ]);
 
-  // ── LÓGICA 3: Preço e status do CTA ─────────────────────────────
   const currentPrice = currentSku?.price ?? product.base_price;
 
   const statusCta: CtaStatus = !currentSku || !currentSku.available
@@ -265,9 +210,15 @@ export function VariantSelector({
       ? 'comprar'
       : 'encomenda';
 
-  const selectedSabor = product.sabores_disponiveis.find(s => s.id === selectedValues.saborId) ?? null;
-  const selectedTamanho = product.tamanhos_disponiveis.find(t => t.id === selectedValues.tamanhoId) ?? null;
-  const selectedEmbalagem = product.tipos_embalagem_disponiveis.find(e => e.id === selectedValues.embalagemId) ?? null;
+  const selectedSabor = product.sabores_disponiveis.find(
+    sabor => sabor.id === selectedValues.saborId
+  ) ?? null;
+  const selectedTamanho = product.tamanhos_disponiveis.find(
+    tamanho => tamanho.id === selectedValues.tamanhoId
+  ) ?? null;
+  const selectedEmbalagem = product.tipos_embalagem_disponiveis.find(
+    embalagem => embalagem.id === selectedValues.embalagemId
+  ) ?? null;
 
   const maxQuantity = statusCta === 'comprar' && currentSku?.stock
     ? Math.max(1, currentSku.stock)
@@ -281,55 +232,78 @@ export function VariantSelector({
     return Math.min(maxQuantity, Math.max(1, Math.floor(value)));
   }, [maxQuantity]);
 
-  // ── Handler: ao clicar em uma opção ──────────────────────────
-  const handleSelect = useCallback(
-    (dimensao: VariantDimension, valueId: string) => {
-      // Cada nova combinação começa em 1 para nunca herdar uma quantidade
-      // maior do que o estoque do SKU recém-selecionado.
-      setQuantity(1);
-      setSelectedValues(prev => {
-        const next = { ...prev, [dimensao]: valueId };
+  const handleAvailabilityChange = useCallback((mode: AvailabilityMode) => {
+    if (mode === availabilityMode) return;
+    if (mode === 'ready' && !hasReadySkus) return;
+    if (mode === 'order' && !hasOrderSkus) return;
 
-        const exactSku = skusValidos.find(sku =>
-          (!usaSabor || sku.sabor_id === (next.saborId ?? null)) &&
-          (!usaTamanho || sku.tamanho_id === (next.tamanhoId ?? null)) &&
-          (!usaEmbalagem || sku.tipo_embalagem_id === (next.embalagemId ?? null))
+    const targetSkus = mode === 'ready' ? readySkus : orderSkus;
+    const sameCombination = targetSkus.find(sku =>
+      skuMatchesSelection(
+        sku,
+        selectedValues,
+        usaSabor,
+        usaTamanho,
+        usaEmbalagem
+      )
+    );
+    const nextSku = sameCombination ?? getPreferredSku(product, targetSkus);
+
+    setQuantity(1);
+    setAvailabilityMode(mode);
+    setSelectedValues(selectionFromSku(nextSku));
+  }, [
+    availabilityMode,
+    hasReadySkus,
+    hasOrderSkus,
+    readySkus,
+    orderSkus,
+    selectedValues,
+    usaSabor,
+    usaTamanho,
+    usaEmbalagem,
+    product,
+  ]);
+
+  const handleSelect = useCallback((dimensao: VariantDimension, valueId: string) => {
+    setQuantity(1);
+    setSelectedValues(prev => {
+      const next = { ...prev, [dimensao]: valueId };
+
+      const candidates = skusDoModo.filter(sku => {
+        if (dimensao === 'embalagemId') {
+          return sku.tipo_embalagem_id === valueId;
+        }
+
+        if (dimensao === 'tamanhoId') {
+          return (
+            sku.tamanho_id === valueId &&
+            (!usaEmbalagem || sku.tipo_embalagem_id === (next.embalagemId ?? null))
+          );
+        }
+
+        return (
+          sku.sabor_id === valueId &&
+          (!usaEmbalagem || sku.tipo_embalagem_id === (next.embalagemId ?? null)) &&
+          (!usaTamanho || sku.tamanho_id === (next.tamanhoId ?? null))
         );
-
-        if (exactSku) return next;
-
-        // Fallback inteligente:
-        // Se a combinação exata não existir, pega um SKU vendável que tenha
-        // a opção clicada e tenta preservar o máximo possível da seleção anterior.
-        // Exemplo: clicar em 1,8kg mantendo sabor Neutro deve virar
-        // 1,8kg + Refil + Neutro, e não bloquear porque antes estava em Pote.
-        const candidates = skusValidos.filter(sku => {
-          if (dimensao === 'saborId') return sku.sabor_id === valueId;
-          if (dimensao === 'tamanhoId') return sku.tamanho_id === valueId;
-          if (dimensao === 'embalagemId') return sku.tipo_embalagem_id === valueId;
-          return false;
-        });
-
-        const fallbackSku = pickBestSkuForOption(candidates, dimensao, prev);
-        if (!fallbackSku) return prev;
-
-        return {
-          saborId: fallbackSku.sabor_id ?? undefined,
-          tamanhoId: fallbackSku.tamanho_id ?? undefined,
-          embalagemId: fallbackSku.tipo_embalagem_id ?? undefined,
-        };
       });
-    },
-    [skusValidos, usaSabor, usaTamanho, usaEmbalagem]
-  );
 
-  // ── Trocar a foto da galeria quando o SKU resolvido tiver imagem ──
+      const exactSku = candidates.find(sku =>
+        skuMatchesSelection(sku, next, usaSabor, usaTamanho, usaEmbalagem)
+      );
+      const fallbackSku = exactSku ?? pickSkuPreservingSelection(product, candidates, next);
+
+      return fallbackSku ? selectionFromSku(fallbackSku) : prev;
+    });
+  }, [skusDoModo, usaSabor, usaTamanho, usaEmbalagem, product]);
+
+  // Mantém preço, imagem, SKU e status sincronizados com a combinação resolvida.
   useEffect(() => {
     onImageChange?.(currentSku?.image_url ?? null);
     onVariantChange?.({ price: currentPrice, status: statusCta });
   }, [currentSku, currentPrice, statusCta, onImageChange, onVariantChange]);
 
-  // ── Adicionar ao carrinho ──────────────────────────────────────
   const handleAddToCart = useCallback(() => {
     if (!currentSku || !currentSku.available || statusCta === 'indisponivel') return;
 
@@ -365,17 +339,117 @@ export function VariantSelector({
     quantity,
   ]);
 
-  const renderUnavailableLine = (isAvailable: boolean) => {
-    if (isAvailable) return null;
-    return <span className={styles.soldOutLine} aria-hidden="true" />;
-  };
-
-  // ── Render ────────────────────────────────────────────────────
   return (
     <div className={styles.selector}>
+      {/* ── 1. Disponibilidade ── */}
+      <div className={styles.group}>
+        <p className={styles.groupLabel}>Disponibilidade</p>
 
-      {/* ── Grupo: Sabor ── */}
-      {product.sabores_disponiveis.length > 0 && (
+        <div
+          className={styles.availabilityOptions}
+          role="group"
+          aria-label="Selecionar disponibilidade"
+        >
+          <button
+            type="button"
+            className={[
+              styles.availabilityBtn,
+              styles.availabilityBtnReady,
+              availabilityMode === 'ready' ? styles.availabilityBtnActive : '',
+            ].join(' ')}
+            onClick={() => handleAvailabilityChange('ready')}
+            disabled={!hasReadySkus}
+            aria-pressed={availabilityMode === 'ready'}
+            title={hasReadySkus ? 'Ver combinações à pronta entrega' : 'Sem combinações à pronta entrega'}
+          >
+            Pronta entrega
+          </button>
+
+          <button
+            type="button"
+            className={[
+              styles.availabilityBtn,
+              styles.availabilityBtnOrder,
+              availabilityMode === 'order' ? styles.availabilityBtnActive : '',
+            ].join(' ')}
+            onClick={() => handleAvailabilityChange('order')}
+            disabled={!hasOrderSkus}
+            aria-pressed={availabilityMode === 'order'}
+            title={hasOrderSkus ? 'Ver combinações sob encomenda' : 'Sem combinações sob encomenda'}
+          >
+            Sob encomenda
+          </button>
+        </div>
+      </div>
+
+      {/* ── 2. Embalagem ── */}
+      {usaEmbalagem && (
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>
+            Embalagem:{' '}
+            <strong className={styles.groupSelected}>
+              {selectedEmbalagem?.nome ?? ''}
+            </strong>
+          </p>
+
+          <div className={styles.options} role="group" aria-label="Selecionar Embalagem">
+            {visibleEmbalagens.map(embalagem => {
+              const isSelected = selectedValues.embalagemId === embalagem.id;
+
+              return (
+                <button
+                  key={embalagem.id}
+                  type="button"
+                  className={[
+                    styles.optionBtn,
+                    isSelected ? styles.optionBtnActive : '',
+                  ].join(' ')}
+                  onClick={() => handleSelect('embalagemId', embalagem.id)}
+                  aria-pressed={isSelected}
+                >
+                  <span className={styles.optionName}>{embalagem.nome}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. Tamanho ── */}
+      {usaTamanho && (
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>
+            Tamanho:{' '}
+            <strong className={styles.groupSelected}>
+              {selectedTamanho?.nome ?? ''}
+            </strong>
+          </p>
+
+          <div className={styles.options} role="group" aria-label="Selecionar Tamanho">
+            {visibleTamanhos.map(tamanho => {
+              const isSelected = selectedValues.tamanhoId === tamanho.id;
+
+              return (
+                <button
+                  key={tamanho.id}
+                  type="button"
+                  className={[
+                    styles.optionBtn,
+                    isSelected ? styles.optionBtnActive : '',
+                  ].join(' ')}
+                  onClick={() => handleSelect('tamanhoId', tamanho.id)}
+                  aria-pressed={isSelected}
+                >
+                  <span className={styles.optionName}>{tamanho.nome}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. Sabor ── */}
+      {usaSabor && (
         <div className={styles.group}>
           <p className={styles.groupLabel}>
             Sabor:{' '}
@@ -387,9 +461,6 @@ export function VariantSelector({
           <div className={styles.options} role="group" aria-label="Selecionar Sabor">
             {visibleSabores.map(sabor => {
               const isSelected = selectedValues.saborId === sabor.id;
-              const status = optionStatuses.sabor[sabor.id] ?? 'unavailable';
-              const isAvailable = disponibilidade.sabor[sabor.id] ?? false;
-              const statusLabel = getOptionStatusLabel(status);
 
               return (
                 <button
@@ -397,114 +468,12 @@ export function VariantSelector({
                   type="button"
                   className={[
                     styles.optionBtn,
-                    isAvailable && status === 'order' ? styles.optionBtnOrder : '',
                     isSelected ? styles.optionBtnActive : '',
-                    !isAvailable ? styles.optionBtnDisabled : '',
                   ].join(' ')}
-                  onClick={() => isAvailable && handleSelect('saborId', sabor.id)}
-                  disabled={!isAvailable}
+                  onClick={() => handleSelect('saborId', sabor.id)}
                   aria-pressed={isSelected}
-                  aria-disabled={!isAvailable}
-                  title={!isAvailable ? `${sabor.nome} — Combinação indisponível` : `${sabor.nome} — ${statusLabel}`}
                 >
                   <span className={styles.optionName}>{sabor.nome}</span>
-                  {renderUnavailableLine(isAvailable)}
-                  <span className="sr-only">
-                    {' '}({statusLabel})
-                    {isSelected ? ' (Selecionado)' : ''}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Grupo: Tamanho ── */}
-      {product.tamanhos_disponiveis.length > 0 && (
-        <div className={styles.group}>
-          <p className={styles.groupLabel}>
-            Tamanho:{' '}
-            <strong className={styles.groupSelected}>
-              {selectedTamanho?.nome ?? ''}
-            </strong>
-          </p>
-
-          <div className={styles.options} role="group" aria-label="Selecionar Tamanho">
-            {product.tamanhos_disponiveis.map(tamanho => {
-              const isSelected = selectedValues.tamanhoId === tamanho.id;
-              const status = optionStatuses.tamanho[tamanho.id] ?? 'unavailable';
-              const isAvailable = disponibilidade.tamanho[tamanho.id] ?? false;
-              const statusLabel = getOptionStatusLabel(status);
-
-              return (
-                <button
-                  key={tamanho.id}
-                  type="button"
-                  className={[
-                    styles.optionBtn,
-                    isAvailable && status === 'order' ? styles.optionBtnOrder : '',
-                    isSelected ? styles.optionBtnActive : '',
-                    !isAvailable ? styles.optionBtnDisabled : '',
-                  ].join(' ')}
-                  onClick={() => isAvailable && handleSelect('tamanhoId', tamanho.id)}
-                  disabled={!isAvailable}
-                  aria-pressed={isSelected}
-                  aria-disabled={!isAvailable}
-                  title={!isAvailable ? `${tamanho.nome} — Combinação indisponível` : `${tamanho.nome} — ${statusLabel}`}
-                >
-                  <span className={styles.optionName}>{tamanho.nome}</span>
-                  {renderUnavailableLine(isAvailable)}
-                  <span className="sr-only">
-                    {' '}({statusLabel})
-                    {isSelected ? ' (Selecionado)' : ''}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Grupo: Embalagem ── */}
-      {product.tipos_embalagem_disponiveis.length > 0 && (
-        <div className={styles.group}>
-          <p className={styles.groupLabel}>
-            Embalagem:{' '}
-            <strong className={styles.groupSelected}>
-              {selectedEmbalagem?.nome ?? ''}
-            </strong>
-          </p>
-
-          <div className={styles.options} role="group" aria-label="Selecionar Embalagem">
-            {product.tipos_embalagem_disponiveis.map(embalagem => {
-              const isSelected = selectedValues.embalagemId === embalagem.id;
-              const status = optionStatuses.embalagem[embalagem.id] ?? 'unavailable';
-              const isAvailable = disponibilidade.embalagem[embalagem.id] ?? false;
-              const statusLabel = getOptionStatusLabel(status);
-
-              return (
-                <button
-                  key={embalagem.id}
-                  type="button"
-                  className={[
-                    styles.optionBtn,
-                    isAvailable && status === 'order' ? styles.optionBtnOrder : '',
-                    isSelected ? styles.optionBtnActive : '',
-                    !isAvailable ? styles.optionBtnDisabled : '',
-                  ].join(' ')}
-                  onClick={() => isAvailable && handleSelect('embalagemId', embalagem.id)}
-                  disabled={!isAvailable}
-                  aria-pressed={isSelected}
-                  aria-disabled={!isAvailable}
-                  title={!isAvailable ? `${embalagem.nome} — Combinação indisponível` : `${embalagem.nome} — ${statusLabel}`}
-                >
-                  <span className={styles.optionName}>{embalagem.nome}</span>
-                  {renderUnavailableLine(isAvailable)}
-                  <span className="sr-only">
-                    {' '}({statusLabel})
-                    {isSelected ? ' (Selecionado)' : ''}
-                  </span>
                 </button>
               );
             })}
@@ -517,7 +486,6 @@ export function VariantSelector({
           <span className={styles.badgeSoldOut}>Combinação Indisponível</span>
         </div>
       )}
-
 
       {/* ── Quantidade ── */}
       <div className={styles.quantitySection}>
@@ -590,7 +558,6 @@ export function VariantSelector({
         )}
       </button>
 
-      {/* Mensagens de auxílio */}
       {statusCta === 'comprar' && (
         <p className={styles.helpText}>
           Esse item será adicionado ao carrinho como pronta entrega.

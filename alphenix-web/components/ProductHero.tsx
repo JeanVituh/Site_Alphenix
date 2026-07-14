@@ -32,23 +32,21 @@ function getSkuPrice(sku: ProductWithVariants['skus_variacoes'][number], basePri
 }
 
 /**
- * SKU inicial = menor variação vendável.
- * Isso mantém a página do produto coerente com o card do catálogo, que mostra
- * “A partir de”. Assim o cliente não clica vendo um preço e cai direto em
- * outra variação mais cara.
+ * O modo inicial é pronta entrega sempre que existir algum SKU em estoque.
+ * Se o produto só tiver encomenda, abre no menor SKU vendável desse modo.
+ * A mesma regra é usada pelo VariantSelector para evitar troca visual após montar.
  */
 function getInitialDisplaySku(product: ProductWithVariants) {
   const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];
+  const skusEmEstoque = skusVisiveis.filter(sku => sku.stock > 0);
+  const skusSobEncomenda = skusVisiveis.filter(sku => sku.stock === 0);
+  const skusDoModoInicial = skusEmEstoque.length > 0 ? skusEmEstoque : skusSobEncomenda;
 
-  return [...skusVisiveis].sort((a, b) => {
+  return [...skusDoModoInicial].sort((a, b) => {
     const priceDiff = getSkuPrice(a, product.base_price) - getSkuPrice(b, product.base_price);
     if (priceDiff !== 0) return priceDiff;
 
-    // Em empate, prioriza pronta entrega.
-    const stockDiff = Number(b.stock > 0) - Number(a.stock > 0);
-    if (stockDiff !== 0) return stockDiff;
-
-    // Em novo empate, prioriza Pote apenas para manter capa mais comercial.
+    // Em empate, prioriza Pote apenas para manter capa mais comercial.
     const aIsPote = a.tipos_embalagem?.nome === 'Pote';
     const bIsPote = b.tipos_embalagem?.nome === 'Pote';
     return Number(bIsPote) - Number(aIsPote);
@@ -75,8 +73,7 @@ export function ProductHero({ product }: Props) {
 const initialDisplaySku = useMemo(() => getInitialDisplaySku(product), [product]);
 
 const initialSkuImage = useMemo(() => {
-  // A imagem inicial acompanha a menor variação vendável, mantendo coerência
-  // com o preço “A partir de” exibido no catálogo.
+  // A imagem inicial acompanha a variação escolhida pelo modo inicial.
   if (initialDisplaySku?.image_url) return initialDisplaySku.image_url;
 
   const skusVisiveis = product.skus_variacoes?.filter(sku => sku.available) ?? [];

@@ -39,6 +39,62 @@
   gap:       var(--sp-2);
 }
 
+/* ── Seletor de disponibilidade ───────────────────────────────── */
+.availabilityOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+  width: min(100%, 430px);
+}
+
+.availabilityBtn {
+  min-height: 42px;
+  padding: 9px 14px;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  color: var(--clr-text-sm);
+  background: var(--clr-bg-card);
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-base) var(--ease-out),
+    opacity var(--t-fast) var(--ease-out);
+}
+
+.availabilityBtn:hover:not(:disabled):not(.availabilityBtnActive) {
+  color: var(--clr-text);
+  border-color: rgba(255, 138, 31, 0.48);
+}
+
+.availabilityBtnReady.availabilityBtnActive {
+  color: #a7e7bd;
+  background: rgba(45, 181, 93, 0.09);
+  border-color: var(--clr-orange);
+  box-shadow: 0 0 0 1px rgba(255, 138, 31, 0.12), var(--shadow-glow-sm);
+}
+
+.availabilityBtnOrder.availabilityBtnActive {
+  color: var(--clr-orange);
+  background: rgba(255, 138, 31, 0.10);
+  border-color: var(--clr-orange);
+  box-shadow: 0 0 0 1px rgba(255, 138, 31, 0.12), var(--shadow-glow-sm);
+}
+
+.availabilityBtn:disabled {
+  color: var(--clr-text-xs);
+  background: transparent;
+  border-color: var(--clr-border);
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 /* ── Botão de opção base ─────────────────────────────────────── */
 .optionBtn {
   position:       relative;
@@ -327,6 +383,17 @@
 @media (max-width: 480px) {
   .selector {
     gap: var(--sp-5);
+  }
+
+  .availabilityOptions {
+    width: 100%;
+  }
+
+  .availabilityBtn {
+    min-height: 40px;
+    padding: 8px 10px;
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
   }
 
   .optionBtn {
