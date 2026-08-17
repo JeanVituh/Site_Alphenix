@@ -26,6 +26,7 @@ export interface CartItem {
   sabor: string | null;
   tamanho: string | null;
   embalagem: string | null;
+  cor: string | null;
   unitPrice: number;
   quantity: number;
   stock: number;
@@ -43,6 +44,7 @@ export interface CartAddInput {
   sabor: string | null;
   tamanho: string | null;
   embalagem: string | null;
+  cor: string | null;
   unitPrice: number;
   stock: number;
   available: boolean;
@@ -95,8 +97,8 @@ export function getFulfillmentLabel(fulfillment: CartFulfillment): string {
   return fulfillment === 'pronta_entrega' ? 'Pronta entrega' : 'Encomenda';
 }
 
-export function getVariationLabel(item: Pick<CartItem, 'sabor' | 'tamanho' | 'embalagem'>): string {
-  return [item.sabor, item.tamanho, item.embalagem]
+export function getVariationLabel(item: Pick<CartItem, 'sabor' | 'tamanho' | 'embalagem' | 'cor'>): string {
+  return [item.sabor, item.tamanho, item.embalagem, item.cor]
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(' - ');
 }
@@ -110,6 +112,7 @@ function buildWhatsappItemBlock(item: CartItem): string {
     item.sabor ? `- Sabor: ${item.sabor}` : null,
     item.tamanho ? `- Tamanho: ${item.tamanho}` : null,
     item.embalagem ? `- Embalagem: ${item.embalagem}` : null,
+    item.cor ? `- Cor: ${item.cor}` : null,
     `- Status: *${getFulfillmentLabel(item.fulfillment)}*`,
     item.quantity > 1
       ? `- Valor: *${formatCurrencyBR(item.unitPrice)} cada*\n- Subtotal do item: *${formatCurrencyBR(getCartItemSubtotal(item))}*`

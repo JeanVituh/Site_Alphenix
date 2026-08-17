@@ -134,6 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       sabor: input.sabor,
       tamanho: input.tamanho,
       embalagem: input.embalagem,
+      cor: input.cor,
       unitPrice: input.unitPrice,
       quantity: requestedQuantity,
       stock: input.stock,

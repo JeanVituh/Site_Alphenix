@@ -67,6 +67,7 @@ function selectionFromSku(sku: SkuVariacao | null): SelectedValues {
     saborId: sku.sabor_id ?? undefined,
     tamanhoId: sku.tamanho_id ?? undefined,
     embalagemId: sku.tipo_embalagem_id ?? undefined,
+    corId: sku.cor_id ?? undefined,
   };
 }
 
@@ -81,12 +82,14 @@ function skuMatchesSelection(
   selectedValues: SelectedValues,
   usaSabor: boolean,
   usaTamanho: boolean,
-  usaEmbalagem: boolean
+  usaEmbalagem: boolean,
+  usaCor: boolean
 ): boolean {
   return (
     (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null)) &&
     (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
-    (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null))
+    (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null)) &&
+    (!usaCor || sku.cor_id === (selectedValues.corId ?? null))
   );
 }
 
@@ -106,6 +109,7 @@ function pickSkuPreservingSelection(
     if (selectedValues.embalagemId && sku.tipo_embalagem_id === selectedValues.embalagemId) score += 100;
     if (selectedValues.tamanhoId && sku.tamanho_id === selectedValues.tamanhoId) score += 80;
     if (selectedValues.saborId && sku.sabor_id === selectedValues.saborId) score += 60;
+    if (selectedValues.corId && sku.cor_id === selectedValues.corId) score += 40;
     return { sku, score, index };
   });
 
@@ -149,6 +153,7 @@ export function VariantSelector({
   const usaSabor = product.sabores_disponiveis.length > 0;
   const usaTamanho = product.tamanhos_disponiveis.length > 0;
   const usaEmbalagem = product.tipos_embalagem_disponiveis.length > 0;
+  const usaCor = product.cores_disponiveis.length > 0;
 
   const skusDoModo = availabilityMode === 'ready' ? readySkus : orderSkus;
 
@@ -159,10 +164,11 @@ export function VariantSelector({
         selectedValues,
         usaSabor,
         usaTamanho,
-        usaEmbalagem
+        usaEmbalagem,
+        usaCor
       )
     ) ?? null;
-  }, [skusDoModo, selectedValues, usaSabor, usaTamanho, usaEmbalagem]);
+  }, [skusDoModo, selectedValues, usaSabor, usaTamanho, usaEmbalagem, usaCor]);
 
   // Ordem progressiva: disponibilidade → embalagem → tamanho → sabor.
   const visibleEmbalagens = useMemo(() => {
@@ -202,6 +208,26 @@ export function VariantSelector({
     selectedValues.tamanhoId,
   ]);
 
+  const visibleCores = useMemo(() => {
+    return product.cores_disponiveis.filter(cor =>
+      skusDoModo.some(sku =>
+        sku.cor_id === cor.id &&
+        (!usaEmbalagem || sku.tipo_embalagem_id === (selectedValues.embalagemId ?? null)) &&
+        (!usaTamanho || sku.tamanho_id === (selectedValues.tamanhoId ?? null)) &&
+        (!usaSabor || sku.sabor_id === (selectedValues.saborId ?? null))
+      )
+    );
+  }, [
+    product.cores_disponiveis,
+    skusDoModo,
+    usaEmbalagem,
+    usaTamanho,
+    usaSabor,
+    selectedValues.embalagemId,
+    selectedValues.tamanhoId,
+    selectedValues.saborId,
+  ]);
+
   const currentPrice = currentSku?.price ?? product.base_price;
 
   const statusCta: CtaStatus = !currentSku || !currentSku.available
@@ -218,6 +244,9 @@ export function VariantSelector({
   ) ?? null;
   const selectedEmbalagem = product.tipos_embalagem_disponiveis.find(
     embalagem => embalagem.id === selectedValues.embalagemId
+  ) ?? null;
+  const selectedCor = product.cores_disponiveis.find(
+    cor => cor.id === selectedValues.corId
   ) ?? null;
 
   const maxQuantity = statusCta === 'comprar' && currentSku?.stock
@@ -244,7 +273,8 @@ export function VariantSelector({
         selectedValues,
         usaSabor,
         usaTamanho,
-        usaEmbalagem
+        usaEmbalagem,
+        usaCor
       )
     );
     const nextSku = sameCombination ?? getPreferredSku(product, targetSkus);
@@ -262,6 +292,7 @@ export function VariantSelector({
     usaSabor,
     usaTamanho,
     usaEmbalagem,
+    usaCor,
     product,
   ]);
 
@@ -282,21 +313,31 @@ export function VariantSelector({
           );
         }
 
+        if (dimensao === 'corId') {
+          return (
+            sku.cor_id === valueId &&
+            (!usaEmbalagem || sku.tipo_embalagem_id === (next.embalagemId ?? null)) &&
+            (!usaTamanho || sku.tamanho_id === (next.tamanhoId ?? null)) &&
+            (!usaSabor || sku.sabor_id === (next.saborId ?? null))
+          );
+        }
+
         return (
           sku.sabor_id === valueId &&
           (!usaEmbalagem || sku.tipo_embalagem_id === (next.embalagemId ?? null)) &&
-          (!usaTamanho || sku.tamanho_id === (next.tamanhoId ?? null))
+          (!usaTamanho || sku.tamanho_id === (next.tamanhoId ?? null)) &&
+          (!usaCor || sku.cor_id === (next.corId ?? null))
         );
       });
 
       const exactSku = candidates.find(sku =>
-        skuMatchesSelection(sku, next, usaSabor, usaTamanho, usaEmbalagem)
+        skuMatchesSelection(sku, next, usaSabor, usaTamanho, usaEmbalagem, usaCor)
       );
       const fallbackSku = exactSku ?? pickSkuPreservingSelection(product, candidates, next);
 
       return fallbackSku ? selectionFromSku(fallbackSku) : prev;
     });
-  }, [skusDoModo, usaSabor, usaTamanho, usaEmbalagem, product]);
+  }, [skusDoModo, usaSabor, usaTamanho, usaEmbalagem, usaCor, product]);
 
   // Mantém preço, imagem, SKU e status sincronizados com a combinação resolvida.
   useEffect(() => {
@@ -317,6 +358,7 @@ export function VariantSelector({
       sabor: currentSku.sabores?.nome ?? selectedSabor?.nome ?? null,
       tamanho: currentSku.tamanhos?.nome ?? selectedTamanho?.nome ?? null,
       embalagem: currentSku.tipos_embalagem?.nome ?? selectedEmbalagem?.nome ?? null,
+      cor: currentSku.cores?.nome ?? selectedCor?.nome ?? null,
       unitPrice: currentPrice,
       stock: currentSku.stock,
       available: currentSku.available,
@@ -335,6 +377,7 @@ export function VariantSelector({
     selectedSabor?.nome,
     selectedTamanho?.nome,
     selectedEmbalagem?.nome,
+    selectedCor?.nome,
     currentPrice,
     quantity,
   ]);
@@ -474,6 +517,39 @@ export function VariantSelector({
                   aria-pressed={isSelected}
                 >
                   <span className={styles.optionName}>{sabor.nome}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. Cor ── */}
+      {usaCor && (
+        <div className={styles.group}>
+          <p className={styles.groupLabel}>
+            Cor:{' '}
+            <strong className={styles.groupSelected}>
+              {selectedCor?.nome ?? ''}
+            </strong>
+          </p>
+
+          <div className={styles.options} role="group" aria-label="Selecionar Cor">
+            {visibleCores.map(cor => {
+              const isSelected = selectedValues.corId === cor.id;
+
+              return (
+                <button
+                  key={cor.id}
+                  type="button"
+                  className={[
+                    styles.optionBtn,
+                    isSelected ? styles.optionBtnActive : '',
+                  ].join(' ')}
+                  onClick={() => handleSelect('corId', cor.id)}
+                  aria-pressed={isSelected}
+                >
+                  <span className={styles.optionName}>{cor.nome}</span>
                 </button>
               );
             })}

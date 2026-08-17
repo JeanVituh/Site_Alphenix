@@ -65,6 +65,11 @@ export interface TipoEmbalagem {
   nome: string;
 }
 
+export interface Cor {
+  id: string;
+  nome: string;
+}
+
 // ── Tabela central: skus_variacoes ────────────────────────────────
 // Os campos sabores/tamanhos/tipos_embalagem vêm embutidos pelo
 // Supabase quando a query usa o select aninhado
@@ -76,6 +81,7 @@ export interface SkuVariacao {
   sabor_id: string | null;
   tamanho_id: string | null;
   tipo_embalagem_id: string | null;
+  cor_id: string | null;
   sku_code: string | null;
   price: number | null;
   image_url: string | null;
@@ -85,6 +91,7 @@ export interface SkuVariacao {
   sabores: Sabor | null;
   tamanhos: Tamanho | null;
   tipos_embalagem: TipoEmbalagem | null;
+  cores: Cor | null;
 }
 
 // ── Retorno de getProductBySlug ───────────────────────────────────
@@ -96,6 +103,7 @@ export interface ProductWithVariants extends Product {
   sabores_disponiveis: Sabor[];
   tamanhos_disponiveis: Tamanho[];
   tipos_embalagem_disponiveis: TipoEmbalagem[];
+  cores_disponiveis: Cor[];
 }
 
 // ── Card de listagem (home, grade de produtos) ────────────────────
@@ -111,6 +119,7 @@ export interface SelectedValues {
   saborId?: string;
   tamanhoId?: string;
   embalagemId?: string;
+  corId?: string;
 }
 
 // ── Mapa de disponibilidade por botão de opção ────────────────────
@@ -121,6 +130,7 @@ export interface OptionAvailability {
   sabor: Record<string, boolean>;
   tamanho: Record<string, boolean>;
   embalagem: Record<string, boolean>;
+  cor: Record<string, boolean>;
 }
 
 // ── Status do CTA, calculado a partir do SKU resolvido ────────────

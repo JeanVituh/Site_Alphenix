@@ -10,6 +10,7 @@ import type {
   Sabor,
   Tamanho,
   TipoEmbalagem,
+  Cor,
 } from '@/lib/types';
 
 // ── Helpers: deduplicar + ordenar os catálogos presentes no produto ──
@@ -41,6 +42,14 @@ function dedupEmbalagens(skus: SkuVariacao[]): TipoEmbalagem[] {
   return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
+function dedupCores(skus: SkuVariacao[]): Cor[] {
+  const mapa = new Map<string, Cor>();
+  for (const sku of skus) {
+    if (sku.cores) mapa.set(sku.cores.id, sku.cores);
+  }
+  return [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
 function normalizeText(value: string | null | undefined): string {
   return (value ?? '')
     .normalize('NFD')
@@ -65,11 +74,12 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
     created_at, updated_at,
 
     skus_variacoes (
-      id, product_id, sabor_id, tamanho_id, tipo_embalagem_id,
+      id, product_id, sabor_id, tamanho_id, tipo_embalagem_id, cor_id,
       sku_code, price, image_url, stock, available, created_at,
       sabores ( id, nome ),
       tamanhos ( id, nome ),
-      tipos_embalagem ( id, nome )
+      tipos_embalagem ( id, nome ),
+      cores ( id, nome )
     )
   `)
   .eq('slug', slug)
@@ -97,6 +107,7 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
     sabores_disponiveis: dedupSabores(skus),
     tamanhos_disponiveis: dedupTamanhos(skus),
     tipos_embalagem_disponiveis: dedupEmbalagens(skus),
+    cores_disponiveis: dedupCores(skus),
   } as ProductWithVariants;
 }
 
