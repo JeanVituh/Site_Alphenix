@@ -174,7 +174,7 @@ export default async function HomePage() {
               </div>
               <h3 className="feature-card__title">Marcas Top</h3>
               <p className="feature-card__text">
-                Dark Wolf, DUX, Max Titanium, IntegralMédica, Probiótica e mais.
+                Dark Wolf, DUX, Max Titanium, IntegralMédica, Universal e Vitafor.
                 Só trabalhamos com marcas que comprovam resultado.
               </p>
             </article>

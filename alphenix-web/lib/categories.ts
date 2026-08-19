@@ -10,14 +10,9 @@
 //  Table Editor do Supabase) os valores reais e ajuste os ids
 //  abaixo se necessário.
 //
-//  Atualização: o schema.sql do banco define a coluna `category`
-//  com esta regra exata:
-//
-//    CHECK (category IN ('proteinas', 'creatinas', 'pre-treino', 'combos e outros'))
-//
-//  Ou seja, o valor correto É "combos e outros" (com espaços) —
-//  isso é o que o Postgres aceita ao inserir um produto. Os ids
-//  abaixo foram ajustados para bater exatamente com essa regra.
+//  Atualização: a migração `SUPABASE_CATALOGO_COMPLETO.sql` amplia
+//  o CHECK da coluna `category` para as categorias do catálogo completo.
+//  Os ids abaixo precisam continuar idênticos aos valores gravados no banco.
 // ================================================================
 
 export interface Category {
@@ -27,9 +22,12 @@ export interface Category {
 }
 
 export const CATEGORIES: Category[] = [
-  { id: 'all',              label: 'Todos',           icon: 'fa-grip-vertical' },
-  { id: 'proteinas',        label: 'Proteínas',       icon: 'fa-dumbbell'      },
-  { id: 'creatinas',        label: 'Creatinas',       icon: 'fa-flask'         },
-  { id: 'pre-treino',       label: 'Pré-Treinos',     icon: 'fa-bolt'          },
-  { id: 'combos e outros',  label: 'Combos e outros', icon: 'fa-box-open'      },
+  { id: 'all',                   label: 'Todos',                icon: 'fa-grip-vertical' },
+  { id: 'proteinas',             label: 'Proteínas',            icon: 'fa-dumbbell'      },
+  { id: 'creatinas',             label: 'Creatinas',            icon: 'fa-flask'         },
+  { id: 'pre-treino',            label: 'Pré-Treinos',          icon: 'fa-bolt'          },
+  { id: 'vitaminas e minerais',  label: 'Vitaminas & Minerais', icon: 'fa-capsules'       },
+  { id: 'bem-estar e sono',      label: 'Bem-estar & Sono',     icon: 'fa-moon'           },
+  { id: 'hipercaloricos',        label: 'Hipercalóricos',       icon: 'fa-weight-hanging' },
+  { id: 'combos e outros',       label: 'Combos & Acessórios',  icon: 'fa-box-open'       },
 ];

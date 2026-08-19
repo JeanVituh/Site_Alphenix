@@ -26,6 +26,9 @@ export type ProductCategory =
   | 'proteinas'
   | 'creatinas'
   | 'pre-treino'
+  | 'vitaminas e minerais'
+  | 'bem-estar e sono'
+  | 'hipercaloricos'
   | 'combos e outros';
 
 // ── Tabela: products (sem alterações de estrutura) ───────────────
