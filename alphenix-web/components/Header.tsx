@@ -7,7 +7,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { CartButton } from '@/components/cart/CartButton';
 
 const NAV_LINKS = [
@@ -20,14 +20,22 @@ const NAV_LINKS = [
 type SectionId = (typeof NAV_LINKS)[number]['id'];
 
 const PENDING_SCROLL_KEY = 'alphenix:pending-scroll-section';
+const PRODUCT_SEARCH_EVENT = 'alphenix:product-search';
+
+type ProductSearchEventDetail = {
+  query: string;
+  scrollToResults?: boolean;
+};
 
 export function Header() {
   const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
+  const topSearchRef = useRef<HTMLInputElement>(null);
 
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeId, setActiveId] = useState<SectionId>('inicio');
+  const [topSearchQuery, setTopSearchQuery] = useState('');
 
   const getHeaderOffset = useCallback(() => {
     return headerRef.current?.getBoundingClientRect().height ?? 0;
@@ -106,6 +114,48 @@ export function Header() {
 
     scheduleSectionScroll(sectionId);
   }
+
+  function publishProductSearch(query: string, scrollToResults = false) {
+    window.dispatchEvent(
+      new CustomEvent<ProductSearchEventDetail>(PRODUCT_SEARCH_EVENT, {
+        detail: { query, scrollToResults },
+      }),
+    );
+  }
+
+  function handleTopSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    publishProductSearch(topSearchQuery, true);
+  }
+
+  function handleTopSearchChange(query: string) {
+    setTopSearchQuery(query);
+    publishProductSearch(query, false);
+  }
+
+  function handleTopSearchClear() {
+    setTopSearchQuery('');
+    publishProductSearch('', false);
+    topSearchRef.current?.focus();
+  }
+
+  // Mantém a busca do cabeçalho sincronizada quando a busca principal
+  // do catálogo for alterada mais abaixo na página.
+  useEffect(() => {
+    if (pathname !== '/') return;
+
+    const initialQuery = new URLSearchParams(window.location.search).get('busca') ?? '';
+    setTopSearchQuery(initialQuery);
+
+    function onProductSearch(event: Event) {
+      const detail = (event as CustomEvent<ProductSearchEventDetail>).detail;
+      if (!detail || typeof detail.query !== 'string') return;
+      setTopSearchQuery(detail.query);
+    }
+
+    window.addEventListener(PRODUCT_SEARCH_EVENT, onProductSearch as EventListener);
+    return () => window.removeEventListener(PRODUCT_SEARCH_EVENT, onProductSearch as EventListener);
+  }, [pathname]);
 
   // ── Header com fundo ao rolar a página ──────────────────────
   useEffect(() => {
@@ -238,7 +288,11 @@ export function Header() {
   const displayedActiveId: SectionId = pathname === '/' ? activeId : 'inicio';
 
   return (
-    <header ref={headerRef} id="header" className={`header${scrolled ? ' scrolled' : ''}`}>
+    <header
+      ref={headerRef}
+      id="header"
+      className={`header${scrolled ? ' scrolled' : ''}${pathname === '/' ? ' header--home-search' : ''}`}
+    >
       <div className="container header__inner">
         <Link href="/" className="header__logo" aria-label="Alphenix — Início">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -287,6 +341,48 @@ export function Header() {
           </button>
         </div>
       </div>
+
+      {pathname === '/' && (
+        <div className="header-product-search" role="search">
+          <form className="header-product-search__form" onSubmit={handleTopSearchSubmit}>
+            <i
+              className="fa-solid fa-magnifying-glass header-product-search__icon"
+              aria-hidden="true"
+            />
+            <input
+              ref={topSearchRef}
+              type="search"
+              className="header-product-search__input"
+              placeholder="Buscar creatina, whey, pré-treino..."
+              aria-label="Buscar produtos"
+              aria-controls="catalogo-completo"
+              autoComplete="off"
+              spellCheck={false}
+              value={topSearchQuery}
+              onChange={(event) => handleTopSearchChange(event.target.value)}
+            />
+
+            {topSearchQuery && (
+              <button
+                type="button"
+                className="header-product-search__clear"
+                aria-label="Limpar busca"
+                onClick={handleTopSearchClear}
+              >
+                <i className="fa-solid fa-xmark" aria-hidden="true" />
+              </button>
+            )}
+
+            <button
+              type="submit"
+              className="header-product-search__submit"
+              aria-label="Ver resultados da busca"
+            >
+              <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+            </button>
+          </form>
+        </div>
+      )}
 
       <div
         className={`mobile-menu${menuOpen ? ' active' : ''}`}

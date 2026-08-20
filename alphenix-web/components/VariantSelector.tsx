@@ -24,7 +24,7 @@ interface VariantSelectorProps {
   /** Chamado quando o SKU resolvido tem uma imagem específica. */
   onImageChange?: (imageUrl: string | null) => void;
   /** Informa o preço/status atual para o ProductHero controlar o preço de cima. */
-  onVariantChange?: (data: { price: number; status: CtaStatus }) => void;
+  onVariantChange?: (data: { price: number; compareAtPrice: number | null; status: CtaStatus }) => void;
 }
 
 type AvailabilityMode = 'ready' | 'order';
@@ -342,8 +342,12 @@ export function VariantSelector({
   // Mantém preço, imagem, SKU e status sincronizados com a combinação resolvida.
   useEffect(() => {
     onImageChange?.(currentSku?.image_url ?? null);
-    onVariantChange?.({ price: currentPrice, status: statusCta });
-  }, [currentSku, currentPrice, statusCta, onImageChange, onVariantChange]);
+    onVariantChange?.({
+      price: currentPrice,
+      compareAtPrice: currentSku?.compare_at_price ?? product.compare_at_price ?? null,
+      status: statusCta,
+    });
+  }, [currentSku, currentPrice, statusCta, product.compare_at_price, onImageChange, onVariantChange]);
 
   const handleAddToCart = useCallback(() => {
     if (!currentSku || !currentSku.available || statusCta === 'indisponivel') return;

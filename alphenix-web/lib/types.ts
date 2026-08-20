@@ -44,6 +44,8 @@ export interface Product {
   brand_color: string;
   brand_initials: string | null;
   base_price: number;
+  /** Preço de referência/anterior exibido riscado. Deve ser um valor real e maior que o preço atual. */
+  compare_at_price: number | null;
   images: string[];
   benefits: string[];
   how_to_use: string[];
@@ -88,6 +90,8 @@ export interface SkuVariacao {
   cor_id: string | null;
   sku_code: string | null;
   price: number | null;
+  /** Preço de referência/anterior específico desta variação. */
+  compare_at_price: number | null;
   image_url: string | null;
   stock: number;
   available: boolean;
@@ -113,7 +117,6 @@ export interface ProductWithVariants extends Product {
 // ── Card de listagem (home, grade de produtos) ────────────────────
 export interface ProductCard extends Product {
   min_price: number;
-  compare_at_price: number | null;
   has_variants: boolean;
   cover_image_url: string | null;
 }

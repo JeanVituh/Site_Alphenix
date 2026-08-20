@@ -70,12 +70,12 @@ export async function getProductBySlug(slug: string): Promise<ProductWithVariant
   .select(`
     id, slug, name, brand, category,
     description, badge, brand_color, brand_initials,
-    base_price, images, benefits, how_to_use, nutrition, active,
+    base_price, compare_at_price, images, benefits, how_to_use, nutrition, active,
     created_at, updated_at,
 
     skus_variacoes (
       id, product_id, sabor_id, tamanho_id, tipo_embalagem_id, cor_id,
-      sku_code, price, image_url, stock, available, created_at,
+      sku_code, price, compare_at_price, image_url, stock, available, created_at,
       sabores ( id, nome ),
       tamanhos ( id, nome ),
       tipos_embalagem ( id, nome ),
@@ -147,10 +147,11 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
     .select(`
       id, slug, name, brand, category,
       description, badge, brand_color, brand_initials,
-      base_price, images, benefits, how_to_use, nutrition, active,
+      base_price, compare_at_price, images, benefits, how_to_use, nutrition, active,
       created_at, updated_at,
       skus_variacoes (
         price,
+        compare_at_price,
         stock,
         available,
         image_url,
@@ -172,6 +173,7 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
 
   type RawSku = {
     price: number | null;
+    compare_at_price: number | null;
     stock: number;
     available: boolean;
     image_url: string | null;
@@ -244,6 +246,16 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
 
     const minPrice = prices.length > 0 ? Math.min(...prices) : product.base_price;
 
+    // O preço riscado precisa acompanhar a mesma variação que originou o
+    // "A partir de". Se não houver preço de referência naquela variação,
+    // usa o preço de referência do produto. Valores menores/iguais ao atual
+    // são ignorados no front-end para evitar uma promoção enganosa.
+    const minPriceSku = skusAtivos.find((s) =>
+      (s.price ?? product.base_price) === minPrice,
+    );
+    const minCompareAtPrice =
+      minPriceSku?.compare_at_price ?? product.compare_at_price ?? null;
+
     // A capa do card acompanha, sempre que possível, a variação de menor preço.
     // Assim o card que mostra “A partir de” não usa uma imagem de uma variação
     // muito mais cara como capa principal.
@@ -291,7 +303,9 @@ export async function getAllProducts(category?: string): Promise<ProductCard[]> 
       skus_variacoes: undefined,
       min_price: minPrice,
       compare_at_price:
-        product.slug === 'combo-dark-wolf' ? darkWolfComboCompareAt : null,
+        product.slug === 'combo-dark-wolf'
+          ? (product.compare_at_price ?? darkWolfComboCompareAt)
+          : minCompareAtPrice,
       has_variants: skusAtivos.length > 1,
       cover_image_url:
         coverSku?.image_url ??

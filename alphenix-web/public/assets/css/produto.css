@@ -1793,3 +1793,18 @@
     font-size: 0.62rem;
   }
 }
+
+/* V8 — preço de referência separado do desconto de pagamento */
+.pdp-price-compact__regular {
+  margin: -1px 0 0;
+  color: rgba(255, 209, 138, 0.7);
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .pdp-price-compact__regular {
+    font-size: 0.68rem;
+  }
+}

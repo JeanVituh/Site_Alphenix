@@ -16,7 +16,6 @@ import { getCatalogBadge, getCatalogCategory, getCategoryLabel } from '@/lib/cat
 import { getProductWaURL } from '@/lib/whatsapp';
 import { formatCurrencyBR } from '@/lib/cart';
 import {
-  PAYMENT_DISCOUNT_PERCENT,
   calculateDiscountedPrice,
   calculatePaymentDiscount,
 } from '@/lib/payment';
@@ -164,6 +163,10 @@ const initialSkuImage = useMemo(() => {
     initialDisplaySku ? getSkuPrice(initialDisplaySku, product.base_price) : product.base_price
   );
 
+  const [variantCompareAtPrice, setVariantCompareAtPrice] = useState<number | null>(() =>
+    initialDisplaySku?.compare_at_price ?? product.compare_at_price ?? null
+  );
+
   const [variantStatus, setVariantStatus] = useState<CtaStatus>(() => {
     if (!product.skus_variacoes?.length) return 'comprar';
     if (!initialDisplaySku) return 'indisponivel';
@@ -172,14 +175,20 @@ const initialSkuImage = useMemo(() => {
   });
 
   const handleVariantChange = useCallback(
-    ({ price, status }: { price: number; status: CtaStatus }) => {
+    ({ price, compareAtPrice, status }: { price: number; compareAtPrice: number | null; status: CtaStatus }) => {
       setVariantPrice(price);
+      setVariantCompareAtPrice(compareAtPrice);
       setVariantStatus(status);
     },
     []
   );
 
   const displayPrice = hasVariants ? variantPrice : product.base_price;
+  const displayCompareAtPrice = hasVariants
+    ? variantCompareAtPrice
+    : product.compare_at_price;
+  const shouldShowCompareAt =
+    displayCompareAtPrice !== null && displayCompareAtPrice > displayPrice;
   const shouldShowPrice = hasVariants ? variantStatus !== 'indisponivel' : true;
   const isOrderVariant = hasVariants && variantStatus === 'encomenda';
   const priceStatusLabel = isOrderVariant ? 'Encomenda' : 'Pronta entrega';
@@ -345,10 +354,12 @@ const initialSkuImage = useMemo(() => {
 
                 {shouldShowPaymentDiscount ? (
                   <div className="pdp-price-compact">
-                    <p className="pdp-price-compact__old">
-                      <span>De</span>
-                      <del>{formatCurrencyBR(displayPrice)}</del>
-                    </p>
+                    {shouldShowCompareAt && (
+                      <p className="pdp-price-compact__old">
+                        <span>De</span>
+                        <del>{formatCurrencyBR(displayCompareAtPrice!)}</del>
+                      </p>
+                    )}
 
                     <p className="pdp-price pdp-price--compact">
                       <span className="pdp-price__curr">R$</span>
@@ -358,9 +369,6 @@ const initialSkuImage = useMemo(() => {
                       <span className="pdp-price__pix-text">no Pix</span>
                     </p>
 
-                    <span className="pdp-price__discount-badge pdp-price__discount-badge--compact">
-                      {PAYMENT_DISCOUNT_PERCENT}% OFF
-                    </span>
                   </div>
                 ) : (
                   <div className="pdp-price pdp-price--compact">
