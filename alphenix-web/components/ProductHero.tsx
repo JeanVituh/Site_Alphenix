@@ -15,10 +15,7 @@ import type { ProductWithVariants, CtaStatus } from '@/lib/types';
 import { getCatalogBadge, getCatalogCategory, getCategoryLabel } from '@/lib/categories';
 import { getProductWaURL } from '@/lib/whatsapp';
 import { formatCurrencyBR } from '@/lib/cart';
-import {
-  calculateDiscountedPrice,
-  calculatePaymentDiscount,
-} from '@/lib/payment';
+import { calculateCompareAtDiscountPercent } from '@/lib/payment';
 
 // ── Helper ───────────────────────────────────────────────────────
 function assetUrl(path: string): string {
@@ -196,12 +193,12 @@ const initialSkuImage = useMemo(() => {
     ? 'Produto sob encomenda. Confirme prazo e disponibilidade no WhatsApp.'
     : 'Produto à pronta entrega. Confirme disponibilidade e pagamento no WhatsApp.';
 
-  // ── Preço com desconto Pix/Dinheiro ──────────────────────────
-  const pixOrCashDiscount = calculatePaymentDiscount(displayPrice, 'pix');
-  const pixOrCashPrice = calculateDiscountedPrice(displayPrice, 'pix');
-  const shouldShowPaymentDiscount = pixOrCashDiscount > 0;
-  const priceToHighlight = shouldShowPaymentDiscount ? pixOrCashPrice : displayPrice;
-  const [priceInt, priceDec] = priceToHighlight.toFixed(2).split('.');
+  // ── Preço anunciado no Pix + desconto comercial dinâmico ─────
+  const discountPercent = calculateCompareAtDiscountPercent(
+    displayPrice,
+    displayCompareAtPrice,
+  );
+  const [priceInt, priceDec] = displayPrice.toFixed(2).split('.');
 
   // WhatsApp direto para produto sem variações
   const directWaUrl = getProductWaURL({
@@ -352,32 +349,27 @@ const initialSkuImage = useMemo(() => {
                   </span>
                 </div>
 
-                {shouldShowPaymentDiscount ? (
-                  <div className="pdp-price-compact">
-                    {shouldShowCompareAt && (
-                      <p className="pdp-price-compact__old">
-                        <span>De</span>
-                        <del>{formatCurrencyBR(displayCompareAtPrice!)}</del>
-                      </p>
-                    )}
-
-                    <p className="pdp-price pdp-price--compact">
-                      <span className="pdp-price__curr">R$</span>
-                      <span className="pdp-price__val">
-                        {priceInt},{priceDec}
-                      </span>
-                      <span className="pdp-price__pix-text">no Pix</span>
+                <div className="pdp-price-compact">
+                  {shouldShowCompareAt && (
+                    <p className="pdp-price-compact__old">
+                      <span>De</span>
+                      <del>{formatCurrencyBR(displayCompareAtPrice!)}</del>
+                      {discountPercent !== null && (
+                        <span className="pdp-price__discount-badge pdp-price__discount-badge--compact">
+                          {discountPercent}% OFF
+                        </span>
+                      )}
                     </p>
+                  )}
 
-                  </div>
-                ) : (
-                  <div className="pdp-price pdp-price--compact">
+                  <p className="pdp-price pdp-price--compact">
                     <span className="pdp-price__curr">R$</span>
                     <span className="pdp-price__val">
                       {priceInt},{priceDec}
                     </span>
-                  </div>
-                )}
+                    <span className="pdp-price__pix-text">no Pix</span>
+                  </p>
+                </div>
 
                 <p className="pdp-price__note">
                   {priceNote}

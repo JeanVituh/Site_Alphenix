@@ -7,8 +7,6 @@
 
 import { getWaURL } from '@/lib/whatsapp';
 import {
-  calculatePaymentDiscount,
-  getPaymentDiscountPercent,
   getPaymentMethodLabel,
   roundCurrency,
   type PaymentMethod,
@@ -28,6 +26,7 @@ export interface CartItem {
   embalagem: string | null;
   cor: string | null;
   unitPrice: number;
+  compareAtPrice?: number | null;
   quantity: number;
   stock: number;
   fulfillment: CartFulfillment;
@@ -46,6 +45,7 @@ export interface CartAddInput {
   embalagem: string | null;
   cor: string | null;
   unitPrice: number;
+  compareAtPrice?: number | null;
   stock: number;
   available: boolean;
   quantity?: number;
@@ -69,23 +69,47 @@ export function getCartItemSubtotal(item: CartItem): number {
   return item.unitPrice * item.quantity;
 }
 
+export function getCartItemCompareAtPrice(item: CartItem): number | null {
+  const compareAtPrice = item.compareAtPrice;
+
+  if (
+    compareAtPrice == null ||
+    !Number.isFinite(compareAtPrice) ||
+    compareAtPrice <= item.unitPrice
+  ) {
+    return null;
+  }
+
+  return compareAtPrice;
+}
+
+export function getCartItemOriginalSubtotal(item: CartItem): number {
+  const compareAtPrice = getCartItemCompareAtPrice(item);
+  return (compareAtPrice ?? item.unitPrice) * item.quantity;
+}
+
 export function getCartTotal(items: CartItem[]): number {
   return items.reduce((total, item) => total + getCartItemSubtotal(item), 0);
 }
 
 export function getCartTotals(
   items: CartItem[],
-  paymentMethod: PaymentMethod
+  _paymentMethod: PaymentMethod
 ): CartTotals {
-  const subtotal = getCartTotal(items);
-  const discountPercent = getPaymentDiscountPercent(paymentMethod);
-  const discount = calculatePaymentDiscount(subtotal, paymentMethod);
+  const total = roundCurrency(getCartTotal(items));
+  const subtotal = roundCurrency(
+    items.reduce((sum, item) => sum + getCartItemOriginalSubtotal(item), 0)
+  );
+  const discount = roundCurrency(Math.max(0, subtotal - total));
+  const discountPercent = subtotal > 0 && discount > 0
+    ? Math.round((discount / subtotal) * 100)
+    : 0;
 
   return {
     subtotal,
     discountPercent,
     discount,
-    total: roundCurrency(Math.max(0, subtotal - discount)),
+    total,
   };
 }
 
@@ -159,7 +183,7 @@ export function buildCartWhatsappMessage(
 
   if (totals.discount > 0) {
     message.push(
-      `Desconto Pix/Dinheiro (${totals.discountPercent}%): *-${formatCurrencyBR(totals.discount)}*`
+      `Desconto promocional (${totals.discountPercent}%): *-${formatCurrencyBR(totals.discount)}*`
     );
   }
 

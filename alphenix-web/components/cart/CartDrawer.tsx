@@ -3,7 +3,7 @@
 //  ALPHENIX — components/cart/CartDrawer.tsx
 //
 //  Drawer lateral do carrinho, com alteração de quantidade,
-//  remoção de item, escolha de pagamento, desconto Pix/Dinheiro
+//  remoção de item, escolha de pagamento e finalização pelo WhatsApp.
 //  e finalização pelo WhatsApp.
 // ================================================================
 
@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useCart } from './CartContext';
 import {
   formatCurrencyBR,
+  getCartItemCompareAtPrice,
   getCartItemSubtotal,
   getCartTotals,
   getCartWhatsappUrl,
@@ -19,7 +20,6 @@ import {
   getVariationLabel,
 } from '@/lib/cart';
 import {
-  PAYMENT_DISCOUNT_PERCENT,
   PAYMENT_METHOD_OPTIONS,
   getPaymentMethodLabel,
   type PaymentMethod,
@@ -74,6 +74,11 @@ export function CartDrawer() {
   );
   const whatsappUrl = items.length > 0 ? getCartWhatsappUrl(items, paymentMethod) : '#';
   const selectedPaymentLabel = getPaymentMethodLabel(paymentMethod);
+  const finalTotalLabel = paymentMethod === 'pix'
+    ? 'Total no Pix'
+    : paymentMethod === 'dinheiro'
+      ? 'Total em dinheiro'
+      : 'Total';
 
   return (
     <>
@@ -215,14 +220,28 @@ export function CartDrawer() {
                 </div>
 
                 {cartTotals.discount > 0 && (
-                  <div className={`${styles.cartTotalRow} ${styles.cartDiscountRow}`}>
-                    <span>Desconto Pix/Dinheiro ({PAYMENT_DISCOUNT_PERCENT}%)</span>
-                    <strong>-{formatCurrencyBR(cartTotals.discount)}</strong>
-                  </div>
+                  <>
+                    <div className={`${styles.cartTotalRow} ${styles.cartDiscountRow}`}>
+                      <span>
+                        Desconto
+                        <small className={styles.cartDiscountBadge}>
+                          {cartTotals.discountPercent}% OFF
+                        </small>
+                      </span>
+                      <strong>-{formatCurrencyBR(cartTotals.discount)}</strong>
+                    </div>
+
+                    <div className={styles.cartSavingsMessage}>
+                      <i className="fa-solid fa-piggy-bank" aria-hidden="true" />
+                      <span>
+                        Você está economizando <strong>{formatCurrencyBR(cartTotals.discount)}</strong> neste pedido.
+                      </span>
+                    </div>
+                  </>
                 )}
 
                 <div className={`${styles.cartTotalRow} ${styles.cartFinalTotalRow}`}>
-                  <span>Total</span>
+                  <span>{finalTotalLabel}</span>
                   <strong>{formatCurrencyBR(cartTotals.total)}</strong>
                 </div>
               </div>
@@ -335,7 +354,11 @@ function CartDrawerItem({
           </div>
 
           <div className={styles.cartItemPrice}>
-            <span>{formatCurrencyBR(item.unitPrice)}</span>
+            {getCartItemCompareAtPrice(item) !== null && (
+              <span className={styles.cartItemCompareAt}>
+                {formatCurrencyBR(getCartItemCompareAtPrice(item)!)}
+              </span>
+            )}
             <strong>{formatCurrencyBR(getCartItemSubtotal(item))}</strong>
           </div>
         </div>

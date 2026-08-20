@@ -364,6 +364,7 @@ export function VariantSelector({
       embalagem: currentSku.tipos_embalagem?.nome ?? selectedEmbalagem?.nome ?? null,
       cor: currentSku.cores?.nome ?? selectedCor?.nome ?? null,
       unitPrice: currentPrice,
+      compareAtPrice: currentSku.compare_at_price ?? product.compare_at_price ?? null,
       stock: currentSku.stock,
       available: currentSku.available,
       quantity,
@@ -383,6 +384,7 @@ export function VariantSelector({
     selectedEmbalagem?.nome,
     selectedCor?.nome,
     currentPrice,
+    product.compare_at_price,
     quantity,
   ]);
 

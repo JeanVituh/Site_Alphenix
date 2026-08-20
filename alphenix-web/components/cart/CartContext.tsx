@@ -64,6 +64,8 @@ function isValidCartItem(value: unknown): value is CartItem {
     typeof item.brand === 'string' &&
     typeof item.unitPrice === 'number' &&
     Number.isFinite(item.unitPrice) &&
+    (item.compareAtPrice == null ||
+      (typeof item.compareAtPrice === 'number' && Number.isFinite(item.compareAtPrice))) &&
     typeof item.quantity === 'number' &&
     item.quantity > 0 &&
     typeof item.stock === 'number' &&
@@ -136,6 +138,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       embalagem: input.embalagem,
       cor: input.cor,
       unitPrice: input.unitPrice,
+      compareAtPrice:
+        input.compareAtPrice != null && input.compareAtPrice > input.unitPrice
+          ? input.compareAtPrice
+          : null,
       quantity: requestedQuantity,
       stock: input.stock,
       fulfillment,
@@ -158,6 +164,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const updatedItem: CartItem = {
           ...item,
           unitPrice: newItem.unitPrice,
+          compareAtPrice: newItem.compareAtPrice,
           stock: newItem.stock,
           fulfillment: newItem.fulfillment,
           imageUrl: newItem.imageUrl,

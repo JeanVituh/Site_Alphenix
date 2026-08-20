@@ -17,7 +17,7 @@ import {
   getCatalogCategory,
 } from '@/lib/categories';
 import { formatCurrencyBR } from '@/lib/cart';
-import { calculateDiscountedPrice } from '@/lib/payment';
+import { calculateCompareAtDiscountPercent } from '@/lib/payment';
 
 const BEST_SELLER_SLUGS = [
   'whey-100-pure-dark-wolf',
@@ -373,11 +373,9 @@ function ComboSpotlight({
   const mainImage = product.cover_image_url ?? product.images?.[0] ?? null;
   const giftImage = giftProduct?.cover_image_url ?? giftProduct?.images?.[0] ?? null;
   const comboPrice = product.min_price ?? product.base_price ?? 0;
-  const comboPix = calculateDiscountedPrice(comboPrice, 'pix');
+  const comboPix = comboPrice;
   const compareAt = product.compare_at_price;
-  const comparePix = compareAt !== null
-    ? calculateDiscountedPrice(compareAt, 'pix')
-    : null;
+  const comparePix = compareAt;
   const savings = comparePix !== null
     ? Math.max(comparePix - comboPix, 0)
     : null;
@@ -470,10 +468,10 @@ function ProductCardItem({
   const delay = `reveal-delay-${(index % 4) + 1}`;
   const mainImage = product.cover_image_url ?? product.images?.[0] ?? null;
   const price = product.min_price ?? product.base_price ?? 0;
-  const discountedPrice = calculateDiscountedPrice(price, 'pix');
-  const [discountedInt, discountedDec] = discountedPrice.toFixed(2).split('.');
+  const [priceInt, priceDec] = price.toFixed(2).split('.');
   const compareAtPrice = product.compare_at_price;
-  const shouldShowCompareAt = compareAtPrice !== null && compareAtPrice > price;
+  const discountPercent = calculateCompareAtDiscountPercent(price, compareAtPrice);
+  const shouldShowCompareAt = discountPercent !== null;
   const displayCategory = getCatalogCategory(product);
   const displayBadge = getCatalogBadge(product);
 
@@ -538,6 +536,11 @@ function ProductCardItem({
             <p className="product-card__price-from-line">
               <span>De</span>
               <del>{formatCurrencyBR(compareAtPrice!)}</del>
+              {discountPercent !== null && (
+                <span className="product-card__price-off--compact">
+                  {discountPercent}% OFF
+                </span>
+              )}
             </p>
           )}
 
@@ -547,7 +550,7 @@ function ProductCardItem({
 
           <p className="product-card__price product-card__price--pix">
             <span className="product-card__price-currency">R$</span>
-            <span className="product-card__price-value">{discountedInt},{discountedDec}</span>
+            <span className="product-card__price-value">{priceInt},{priceDec}</span>
             <span className="product-card__price-pix-text">no Pix</span>
           </p>
 

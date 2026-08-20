@@ -873,3 +873,56 @@
     position: static;
   }
 }
+
+/* Resumo promocional do carrinho: preço de referência x preço atual */
+.cartDiscountRow > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.cartDiscountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  color: #08150e;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  background: #3ddc84;
+  border-radius: var(--radius-full, 999px);
+}
+
+.cartSavingsMessage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 5px 0 12px;
+  padding: 10px 12px;
+  color: #bfeecf;
+  font-size: 12px;
+  line-height: 1.35;
+  background: rgba(61, 220, 132, 0.08);
+  border: 1px solid rgba(61, 220, 132, 0.2);
+  border-radius: var(--radius-sm, 12px);
+}
+
+.cartSavingsMessage i {
+  flex: 0 0 auto;
+  color: #3ddc84;
+  font-size: 14px;
+}
+
+.cartSavingsMessage strong {
+  color: #63e79a;
+  font-weight: 900;
+}
+
+.cartItemCompareAt {
+  color: var(--clr-text-xs, #776d64) !important;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  opacity: 0.85;
+}
