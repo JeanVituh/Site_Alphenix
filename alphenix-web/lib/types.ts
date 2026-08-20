@@ -26,6 +26,7 @@ export type ProductCategory =
   | 'proteinas'
   | 'creatinas'
   | 'pre-treino'
+  | 'termogenicos e energia'
   | 'vitaminas e minerais'
   | 'bem-estar e sono'
   | 'hipercaloricos'
@@ -112,6 +113,7 @@ export interface ProductWithVariants extends Product {
 // ── Card de listagem (home, grade de produtos) ────────────────────
 export interface ProductCard extends Product {
   min_price: number;
+  compare_at_price: number | null;
   has_variants: boolean;
   cover_image_url: string | null;
 }

@@ -1,26 +1,31 @@
 'use client';
 // ================================================================
-//  ALPHENIX — HomeProducts (components/HomeProducts.tsx)
+//  ALPHENIX — HomeProducts
 //
-//  Recria a busca + filtros de categoria + grade de produtos que
-//  existiam em main.js (initSearch, initFilters, renderProducts),
-//  agora em React e usando os produtos reais do Supabase (recebidos
-//  via prop, buscados em app/page.tsx com getAllProducts()) em vez
-//  da lista fixa de products.js.
-//
-//  Recebe `products: ProductCard[]` já prontos do servidor e faz
-//  toda a busca/filtro no cliente (mesmo comportamento do site
-//  original — dataset pequeno, não precisa de round-trip ao banco
-//  a cada digitação).
+//  Busca + filtros + destaques comerciais da home.
+//  A reorganização de categorias usa fallback por slug para funcionar
+//  mesmo antes da migração SQL ser executada no Supabase.
 // ================================================================
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProductCard } from '@/lib/types';
-import { CATEGORIES } from '@/lib/categories';
+import {
+  CATEGORIES,
+  getCatalogBadge,
+  getCatalogCategory,
+} from '@/lib/categories';
 import { formatCurrencyBR } from '@/lib/cart';
 import { PAYMENT_DISCOUNT_PERCENT, calculateDiscountedPrice } from '@/lib/payment';
+
+const BEST_SELLER_SLUGS = [
+  'whey-100-pure-dark-wolf',
+  'combo-dark-wolf',
+  'alcateia-pre-workout-dark-wolf',
+  'creatina-dark-wolf',
+  
+] as const;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -45,7 +50,7 @@ interface HomeProductsProps {
 
 export function HomeProducts({ products }: HomeProductsProps) {
   const searchParams = useSearchParams();
-  const gridRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const filterTabsRef = useRef<HTMLDivElement>(null);
 
   const [activeCategory, setActiveCategory] = useState('all');
@@ -53,7 +58,7 @@ export function HomeProducts({ products }: HomeProductsProps) {
   const [showFilterHint, setShowFilterHint] = useState(false);
   const [filterHintHidden, setFilterHintHidden] = useState(false);
 
-  // Deep-link: /?categoria=X (vindo do rodapé ou de fora) pré-seleciona a aba
+  // Deep-link: /?categoria=X (vindo do rodapé ou de fora) pré-seleciona a aba.
   useEffect(() => {
     const cat = searchParams.get('categoria');
     if (cat) setActiveCategory(cat);
@@ -85,27 +90,46 @@ export function HomeProducts({ products }: HomeProductsProps) {
     };
   }, []);
 
+  const featuredProducts = useMemo(() => {
+    const bySlug = new Map(products.map((product) => [product.slug, product]));
+    return BEST_SELLER_SLUGS
+      .map((slug) => bySlug.get(slug))
+      .filter((product): product is ProductCard => Boolean(product));
+  }, [products]);
+
+  const featuredCombo = useMemo(
+    () => products.find((product) => product.slug === 'combo-dark-wolf') ?? null,
+    [products],
+  );
+
+  const featuredComboGift = useMemo(
+    () => products.find((product) => product.slug === 'coqueteleira-dark-wolf') ?? null,
+    [products],
+  );
+
   const filtered = useMemo(() => {
     const q = normalizeStr(searchQuery.trim());
-    return products.filter((p) => {
-      const matchCat = activeCategory === 'all' || p.category === activeCategory;
+
+    return products.filter((product) => {
+      const displayCategory = getCatalogCategory(product);
+      const matchCat = activeCategory === 'all' || displayCategory === activeCategory;
       if (!matchCat) return false;
       if (!q) return true;
+
       return (
-        normalizeStr(p.name).includes(q) ||
-        normalizeStr(p.brand).includes(q) ||
-        normalizeStr(p.description ?? '').includes(q)
+        normalizeStr(product.name).includes(q) ||
+        normalizeStr(product.brand).includes(q) ||
+        normalizeStr(product.description ?? '').includes(q)
       );
     });
   }, [products, activeCategory, searchQuery]);
 
-  // Reaplica o scroll-reveal nos cards sempre que a lista filtrada muda
-  // (a versão global em RevealAnimations.tsx só observa o que existe no
-  // mount inicial — aqui os cards entram/saem dinamicamente).
+  // Reaplica o scroll-reveal nos cards sempre que as listas mudam.
   useEffect(() => {
-    const grid = gridRef.current;
-    if (!grid) return;
-    const items = grid.querySelectorAll<HTMLElement>('.reveal:not(.visible)');
+    const root = contentRef.current;
+    if (!root) return;
+
+    const items = root.querySelectorAll<HTMLElement>('.reveal:not(.visible)');
     if (!items.length) return;
 
     const obs = new IntersectionObserver(
@@ -117,11 +141,12 @@ export function HomeProducts({ products }: HomeProductsProps) {
           }
         });
       },
-      { threshold: 0.08, rootMargin: '0px 0px -32px 0px' }
+      { threshold: 0.08, rootMargin: '0px 0px -32px 0px' },
     );
+
     items.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
-  }, [filtered]);
+  }, [filtered, featuredProducts, featuredCombo]);
 
   const hasQuery = searchQuery.trim().length > 0;
 
@@ -131,106 +156,246 @@ export function HomeProducts({ products }: HomeProductsProps) {
   }
 
   return (
-    <>
-      {/* ── Search Bar ── */}
-      <div className="search-bar-wrapper reveal">
-        <div className="search-bar">
-          <i className="fa-solid fa-magnifying-glass search-bar__icon" aria-hidden="true" />
-          <input
-            type="search"
-            className="search-bar__input"
-            placeholder="Buscar por nome, marca..."
-            aria-label="Buscar produtos"
-            autoComplete="off"
-            spellCheck={false}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+    <div className="home-products" ref={contentRef}>
+      {/* ══ MAIS VENDIDOS ═══════════════════════════════════════ */}
+      {featuredProducts.length > 0 && (
+        <section className="home-highlight-section" aria-labelledby="mais-vendidos-title">
+          <div className="home-highlight-heading reveal">
+            <div>
+              <p className="home-highlight-eyebrow">
+                <i className="fa-solid fa-fire" aria-hidden="true" />
+                Favoritos dos clientes
+              </p>
+              <h3 id="mais-vendidos-title">MAIS <span>VENDIDOS</span></h3>
+            </div>
+            <a href="#catalogo-completo" className="home-highlight-link">
+              Ver catálogo completo
+              <i className="fa-solid fa-arrow-down" aria-hidden="true" />
+            </a>
+          </div>
+
+          <div className="products-grid products-grid--featured">
+            {featuredProducts.map((product, index) => (
+              <ProductCardItem
+                key={`featured-${product.id}`}
+                product={product}
+                index={index}
+                featured
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ══ COMBO EM DESTAQUE ══════════════════════════════════ */}
+      {featuredCombo && (
+        <ComboSpotlight product={featuredCombo} giftProduct={featuredComboGift} />
+      )}
+
+      {/* ══ CATÁLOGO COMPLETO ══════════════════════════════════ */}
+      <section className="catalog-complete" id="catalogo-completo" aria-labelledby="catalogo-completo-title">
+        <div className="catalog-complete__heading reveal">
+          <p className="home-highlight-eyebrow">
+            <i className="fa-solid fa-bag-shopping" aria-hidden="true" />
+            Encontre o ideal para seu objetivo
+          </p>
+          <h3 id="catalogo-completo-title">CATÁLOGO <span>COMPLETO</span></h3>
+        </div>
+
+        {/* ── Search Bar ── */}
+        <div className="search-bar-wrapper reveal">
+          <div className="search-bar">
+            <i className="fa-solid fa-magnifying-glass search-bar__icon" aria-hidden="true" />
+            <input
+              type="search"
+              className="search-bar__input"
+              placeholder="Buscar por nome, marca..."
+              aria-label="Buscar produtos"
+              autoComplete="off"
+              spellCheck={false}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {hasQuery && (
+              <button
+                type="button"
+                className="search-bar__clear"
+                aria-label="Limpar busca"
+                onClick={() => setSearchQuery('')}
+              >
+                <i className="fa-solid fa-xmark" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+
           {hasQuery && (
-            <button
-              type="button"
-              className="search-bar__clear"
-              aria-label="Limpar busca"
-              onClick={() => setSearchQuery('')}
-            >
-              <i className="fa-solid fa-xmark" aria-hidden="true" />
-            </button>
+            <p className="search-results-count" aria-live="polite">
+              {filtered.length > 0 ? (
+                <>
+                  <span>{filtered.length}</span> resultado{filtered.length !== 1 ? 's' : ''} para
+                  {' "'}<span>{searchQuery}</span>{'"'}
+                </>
+              ) : (
+                <>Nenhum resultado para {'"'}<span>{searchQuery}</span>{'"'}</>
+              )}
+            </p>
           )}
         </div>
 
-        {hasQuery && (
-          <p className="search-results-count" aria-live="polite">
-            {filtered.length > 0 ? (
-              <>
-                <span>{filtered.length}</span> resultado{filtered.length !== 1 ? 's' : ''} para
-                {' "'}<span>{searchQuery}</span>{'"'}
-              </>
-            ) : (
-              <>Nenhum resultado para {'"'}<span>{searchQuery}</span>{'"'}</>
-            )}
-          </p>
-        )}
-      </div>
-
-      {/* ── Category Filters ── */}
-      <div
-        className={`filter-tabs-wrapper${showFilterHint ? ' has-scroll' : ''}${filterHintHidden ? ' scrolled' : ''}`}
-      >
+        {/* ── Category Filters ── */}
         <div
-          ref={filterTabsRef}
-          className="filter-tabs"
-          id="filterTabs"
-          role="tablist"
-          aria-label="Filtrar por categoria"
+          className={`filter-tabs-wrapper${showFilterHint ? ' has-scroll' : ''}${filterHintHidden ? ' scrolled' : ''}`}
         >
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              className={`filter-tab${activeCategory === cat.id ? ' active' : ''}`}
-              data-category={cat.id}
-              role="tab"
-              aria-selected={activeCategory === cat.id}
-              onClick={() => handleCategoryClick(cat.id)}
-            >
-              <i className={`fa-solid ${cat.icon}`} aria-hidden="true" />
-              <span>{cat.label}</span>
-            </button>
+          <div
+            ref={filterTabsRef}
+            className="filter-tabs"
+            id="filterTabs"
+            role="tablist"
+            aria-label="Filtrar por categoria"
+          >
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`filter-tab${activeCategory === cat.id ? ' active' : ''}`}
+                data-category={cat.id}
+                role="tab"
+                aria-selected={activeCategory === cat.id}
+                onClick={() => handleCategoryClick(cat.id)}
+              >
+                <i className={`fa-solid ${cat.icon}`} aria-hidden="true" />
+                <span>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {showFilterHint && (
+            <span className="filter-scroll-hint" aria-hidden="true">
+              <i className="fa-solid fa-chevron-right" />
+            </span>
+          )}
+        </div>
+
+        {/* ── Products Grid ── */}
+        <div
+          className="products-grid"
+          id="productsGrid"
+          aria-live="polite"
+          aria-label="Grade de produtos"
+        >
+          {filtered.map((product, index) => (
+            <ProductCardItem key={product.id} product={product} index={index} />
           ))}
         </div>
 
-        {showFilterHint && (
-          <span className="filter-scroll-hint" aria-hidden="true">
-            <i className="fa-solid fa-chevron-right" />
-          </span>
+        {/* ── Empty state ── */}
+        {filtered.length === 0 && (
+          <div className="products-empty" role="status">
+            <i className="fa-solid fa-box-open" aria-hidden="true" />
+            <p>
+              {hasQuery
+                ? `Nenhum produto encontrado para "${searchQuery}".`
+                : 'Nenhum produto nesta categoria.'}
+            </p>
+          </div>
         )}
-      </div>
+      </section>
+    </div>
+  );
+}
 
-      {/* ── Products Grid ── */}
-      <div
-        className="products-grid"
-        id="productsGrid"
-        ref={gridRef}
-        aria-live="polite"
-        aria-label="Grade de produtos"
-      >
-        {filtered.map((product, i) => (
-          <ProductCardItem key={product.id} product={product} index={i} />
-        ))}
-      </div>
+// ── Destaque de combo ───────────────────────────────────────────
 
-      {/* ── Empty state ── */}
-      {filtered.length === 0 && (
-        <div className="products-empty" role="status">
-          <i className="fa-solid fa-box-open" aria-hidden="true" />
-          <p>
-            {hasQuery
-              ? `Nenhum produto encontrado para "${searchQuery}".`
-              : 'Nenhum produto nesta categoria.'}
-          </p>
+function ComboSpotlight({
+  product,
+  giftProduct,
+}: {
+  product: ProductCard;
+  giftProduct: ProductCard | null;
+}) {
+  const mainImage = product.cover_image_url ?? product.images?.[0] ?? null;
+  const giftImage = giftProduct?.cover_image_url ?? giftProduct?.images?.[0] ?? null;
+  const comboPrice = product.min_price ?? product.base_price ?? 0;
+  const comboPix = calculateDiscountedPrice(comboPrice, 'pix');
+  const compareAt = product.compare_at_price;
+  const comparePix = compareAt !== null
+    ? calculateDiscountedPrice(compareAt, 'pix')
+    : null;
+  const savings = comparePix !== null
+    ? Math.max(comparePix - comboPix, 0)
+    : null;
+
+  return (
+    <section className="combo-spotlight reveal" aria-labelledby="combo-destaque-title">
+      <div className="combo-spotlight__content">
+        <p className="combo-spotlight__eyebrow">
+          <i className="fa-solid fa-gift" aria-hidden="true" />
+          Oferta em destaque
+        </p>
+
+        <h3 id="combo-destaque-title">
+          COMBO DARK WOLF <span>+ COQUETELEIRA GRÁTIS</span>
+        </h3>
+
+        <p className="combo-spotlight__text">
+          Whey Pure 900g + Creatina Dark Wolf 500g com laudo e uma coqueteleira
+          tradicional de brinde. Um kit completo para força, recuperação e praticidade.
+        </p>
+
+        <div className="combo-spotlight__benefits" aria-label="Vantagens do combo">
+          <span><i className="fa-solid fa-check" aria-hidden="true" /> Whey 900g</span>
+          <span><i className="fa-solid fa-check" aria-hidden="true" /> Creatina 500g</span>
+          <span><i className="fa-solid fa-gift" aria-hidden="true" /> Coqueteleira de brinde</span>
         </div>
-      )}
-    </>
+
+        <div className="combo-spotlight__price-row">
+          <div>
+            {comparePix !== null && comparePix > comboPix && (
+              <p className="combo-spotlight__compare">
+                Separados no Pix: <del>{formatCurrencyBR(comparePix)}</del>
+              </p>
+            )}
+            <p className="combo-spotlight__price">
+              <small>Combo no Pix</small>
+              <strong>{formatCurrencyBR(comboPix)}</strong>
+            </p>
+          </div>
+
+          {savings !== null && savings >= 0.01 && (
+            <span className="combo-spotlight__saving">
+              Economize {formatCurrencyBR(savings)}
+            </span>
+          )}
+        </div>
+
+        <Link href={`/produtos/${product.slug}`} className="btn btn--primary combo-spotlight__cta">
+          <i className="fa-solid fa-cart-plus" aria-hidden="true" />
+          Ver combo e garantir brinde
+        </Link>
+      </div>
+
+      <div className="combo-spotlight__visual" aria-hidden="true">
+        <div className="combo-spotlight__glow" />
+        {mainImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={assetUrl(mainImage)} alt="" className="combo-spotlight__image" />
+        ) : (
+          <div className="combo-spotlight__placeholder">DW</div>
+        )}
+
+        {giftImage && (
+          <div className="combo-spotlight__gift-product">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={assetUrl(giftImage)} alt="" />
+            <span>GRÁTIS</span>
+          </div>
+        )}
+
+        <span className="combo-spotlight__gift-badge">
+          <i className="fa-solid fa-gift" /> BRINDE
+        </span>
+      </div>
+    </section>
   );
 }
 
@@ -239,18 +404,25 @@ export function HomeProducts({ products }: HomeProductsProps) {
 function ProductCardItem({
   product,
   index,
+  featured = false,
 }: {
   product: ProductCard;
   index: number;
+  featured?: boolean;
 }) {
   const delay = `reveal-delay-${(index % 4) + 1}`;
   const mainImage = product.cover_image_url ?? product.images?.[0] ?? null;
   const price = product.min_price ?? product.base_price ?? 0;
   const discountedPrice = calculateDiscountedPrice(price, 'pix');
   const [discountedInt, discountedDec] = discountedPrice.toFixed(2).split('.');
+  const displayCategory = getCatalogCategory(product);
+  const displayBadge = getCatalogBadge(product);
 
   return (
-    <article className={`product-card reveal ${delay}`} data-category={product.category}>
+    <article
+      className={`product-card reveal ${delay}${featured ? ' product-card--featured' : ''}`}
+      data-category={displayCategory}
+    >
       <div className="product-card__image-wrap">
         <Link
           href={`/produtos/${product.slug}`}
@@ -259,7 +431,7 @@ function ProductCardItem({
           tabIndex={-1}
         />
 
-        {product.badge && <span className="product-card__badge">{product.badge}</span>}
+        {displayBadge && <span className="product-card__badge">{displayBadge}</span>}
 
         {mainImage && (
           // eslint-disable-next-line @next/next/no-img-element

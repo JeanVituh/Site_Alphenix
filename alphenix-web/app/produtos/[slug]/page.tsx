@@ -16,7 +16,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import { getProductBySlug, getAllProductSlugs } from '@/lib/queries/products';
-import { CATEGORIES } from '@/lib/categories';
+import { getCatalogCategory, getCategoryLabel } from '@/lib/categories';
 import type { NutritionFacts } from '@/lib/types';
 
 import { ProductHero }      from '@/components/ProductHero';
@@ -213,9 +213,10 @@ export default async function ProductPage(
   const product   = await getProductBySlug(slug);
   if (!product) notFound();
 
-  // Rótulo legível da categoria para o breadcrumb
-  const categoryObj   = CATEGORIES.find(c => c.id === product.category);
-  const categoryLabel = categoryObj?.label ?? product.category;
+  // Usa a categoria de exibição para que a página já fique correta mesmo
+  // antes da migração SQL dos estimulantes ser executada no Supabase.
+  const displayCategory = getCatalogCategory(product);
+  const categoryLabel = getCategoryLabel(displayCategory);
 
   // Itens da nav de seções — só adiciona se o conteúdo existir
   const navItems: NavItem[] = [
@@ -245,7 +246,7 @@ export default async function ProductPage(
           <i className="fa-solid fa-chevron-right" aria-hidden="true" />
           <Link href="/#produtos">Produtos</Link>
           <i className="fa-solid fa-chevron-right" aria-hidden="true" />
-          <Link href={`/?categoria=${encodeURIComponent(product.category)}#produtos`}>
+          <Link href={`/?categoria=${encodeURIComponent(displayCategory)}#produtos`}>
             {categoryLabel}
           </Link>
           <i className="fa-solid fa-chevron-right" aria-hidden="true" />

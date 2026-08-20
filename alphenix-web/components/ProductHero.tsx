@@ -12,6 +12,7 @@ import { useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { VariantSelector } from './VariantSelector';
 import type { ProductWithVariants, CtaStatus } from '@/lib/types';
+import { getCatalogBadge, getCatalogCategory, getCategoryLabel } from '@/lib/categories';
 import { getProductWaURL } from '@/lib/whatsapp';
 import { formatCurrencyBR } from '@/lib/cart';
 import {
@@ -60,6 +61,9 @@ interface Props {
 
 // ── Componente ───────────────────────────────────────────────────
 export function ProductHero({ product }: Props) {
+  const displayCategory = getCatalogCategory(product);
+  const displayCategoryLabel = getCategoryLabel(displayCategory);
+  const displayBadge = getCatalogBadge(product);
   // Agora product.images guarda APENAS imagens fixas/genéricas:
   // exemplo: -2.jpg, -3.jpg, -4.jpg
   const fixedImages = useMemo(
@@ -307,8 +311,8 @@ const initialSkuImage = useMemo(() => {
               <div className="pdp-info__top-row">
                 <div className="pdp-info__badges">
                   <span className="pdp-brand">{product.brand}</span>
-                  {product.badge && (
-                    <span className="pdp-badge">{product.badge}</span>
+                  {displayBadge && (
+                    <span className="pdp-badge">{displayBadge}</span>
                   )}
                 </div>
 
@@ -326,7 +330,7 @@ const initialSkuImage = useMemo(() => {
               <h1 className="pdp-name">{product.name}</h1>
 
               <span className="pdp-category-tag">
-                {product.category.toUpperCase()}
+                {displayCategoryLabel.toUpperCase()}
               </span>
             </div>
 
