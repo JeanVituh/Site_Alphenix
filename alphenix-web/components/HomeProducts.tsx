@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProductCard } from '@/lib/types';
 import {
   CATEGORIES,
@@ -163,13 +163,18 @@ export function HomeProducts({ products }: HomeProductsProps) {
   const activeCategoryLabel =
     CATEGORIES.find((category) => category.id === activeCategory)?.label ?? 'Produtos';
 
-  function syncSearch(query: string) {
+  function syncSearch(query: string, scrollToResults = false) {
     setSearchQuery(query);
     window.dispatchEvent(
       new CustomEvent<ProductSearchEventDetail>(PRODUCT_SEARCH_EVENT, {
-        detail: { query, scrollToResults: false },
+        detail: { query, scrollToResults },
       }),
     );
+  }
+
+  function handleCatalogSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    syncSearch(searchQuery, true);
   }
 
   function handleCategorySelect(id: string) {
@@ -201,7 +206,11 @@ export function HomeProducts({ products }: HomeProductsProps) {
         </div>
 
         <div className="search-bar-wrapper search-bar-wrapper--top">
-          <div className="search-bar">
+          <form
+            className="search-bar search-bar--catalog"
+            role="search"
+            onSubmit={handleCatalogSearchSubmit}
+          >
             <i className="fa-solid fa-magnifying-glass search-bar__icon" aria-hidden="true" />
             <input
               type="search"
@@ -223,7 +232,15 @@ export function HomeProducts({ products }: HomeProductsProps) {
                 <i className="fa-solid fa-xmark" aria-hidden="true" />
               </button>
             )}
-          </div>
+            <button
+              type="submit"
+              className="search-bar__submit"
+              aria-label="Ver produtos encontrados"
+              title="Ver resultados"
+            >
+              <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+            </button>
+          </form>
         </div>
 
         <div className="catalog-category-grid" role="tablist" aria-label="Filtrar por categoria">
