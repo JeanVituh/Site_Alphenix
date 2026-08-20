@@ -196,7 +196,7 @@ export function HomeProducts({ products }: HomeProductsProps) {
             <h3 id="catalog-discovery-title">ENCONTRE SEU <span>SUPLEMENTO</span></h3>
           </div>
           <p className="catalog-discovery__helper">
-            Pesquise pelo nome ou toque em uma categoria. No celular, todas ficam visíveis sem arrastar para o lado.
+            Pesquise pelo nome ou toque em uma categoria.
           </p>
         </div>
 
