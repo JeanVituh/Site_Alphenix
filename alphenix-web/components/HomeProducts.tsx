@@ -156,7 +156,7 @@ export function HomeProducts({ products }: HomeProductsProps) {
 
     items.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
-  }, [filtered, featuredProducts, featuredCombo]);
+  }, [filtered, featuredProducts, featuredCombo, browseAll]);
 
   const hasQuery = searchQuery.trim().length > 0;
   const isFiltering = hasQuery || activeCategory !== 'all' || browseAll;
