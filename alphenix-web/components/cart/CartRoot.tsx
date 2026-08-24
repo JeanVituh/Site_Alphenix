@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { CartProvider, useCart } from './CartContext';
 import { CartDrawer } from './CartDrawer';
 import styles from './Cart.module.css';
+import { AlphenixAssistant } from '@/components/assistant/AlphenixAssistant';
 
 export function CartRoot({ children }: { children: ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export function CartRoot({ children }: { children: ReactNode }) {
       {children}
       <CartDrawer />
       <CartConfirmation />
+      <AlphenixAssistant />
     </CartProvider>
   );
 }
