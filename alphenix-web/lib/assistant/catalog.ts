@@ -1,9 +1,15 @@
 import { getCatalogCategory } from '@/lib/categories';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getDarkWolfCatalogKnowledge } from './darkWolfCatalog';
 import type { AssistantProductRecommendation, AssistantVariant } from './types';
 
 interface CatalogSearchArgs {
   query?: string | null;
+  // Filtro interno usado pelo assistente para objetivos como imunidade/sono.
+  // Diferente de `query`, ele considera apenas nome/descrição/benefícios/badge
+  // e não a categoria, evitando falsos positivos como a palavra 'sono' em
+  // todos os itens da categoria 'Bem-estar & Sono'.
+  evidence_query?: string | null;
   category?: string | null;
   max_price?: number | null;
   in_stock_only?: boolean | null;
@@ -36,6 +42,10 @@ function normalizeImageUrl(path: string | null | undefined): string | null {
   return `/${path}`;
 }
 
+function uniqueStrings(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim()))];
+}
+
 function commercialPriority(product: AssistantProductRecommendation): number {
   const slug = normalizeText(product.slug);
   const brand = normalizeText(product.brand);
@@ -43,6 +53,7 @@ function commercialPriority(product: AssistantProductRecommendation): number {
   // Regra de merchandising da Alphenix:
   // a Creatina Dark Wolf é um produto estratégico da loja e deve aparecer
   // entre as primeiras opções sempre que realmente corresponder à busca.
+  if (slug === 'alpha-burn-dark-wolf') return 1200;
   if (slug === 'creatina-dark-wolf') return 1000;
 
   // Pequeno desempate para a marca Dark Wolf, sem furar filtros de categoria,
@@ -108,6 +119,7 @@ export async function searchCatalog(
   };
 
   const q = normalizeText(args.query);
+  const evidenceQuery = normalizeText(args.evidence_query);
   const category = normalizeText(args.category);
   const maxPrice =
     typeof args.max_price === 'number' && Number.isFinite(args.max_price)
@@ -119,6 +131,13 @@ export async function searchCatalog(
   const products = ((data ?? []) as unknown as RawProduct[])
     .map((product) => {
       const displayCategory = getCatalogCategory(product);
+      const officialKnowledge = getDarkWolfCatalogKnowledge(product.slug);
+      const effectiveDescription = officialKnowledge?.description ?? product.description;
+      const effectiveBenefits = officialKnowledge
+        ? uniqueStrings(officialKnowledge.benefits)
+        : uniqueStrings(product.benefits ?? []);
+      const catalogFacts = uniqueStrings(officialKnowledge?.facts ?? []);
+      const catalogTags = uniqueStrings(officialKnowledge?.tags ?? []);
       const activeSkus = (product.skus_variacoes ?? []).filter((sku) => sku.available);
       const eligibleSkus = inStockOnly
         ? activeSkus.filter((sku) => sku.stock > 0)
@@ -135,12 +154,20 @@ export async function searchCatalog(
 
       if (category && normalizeText(displayCategory) !== category) return null;
 
-      const searchBlob = normalizeText([
+      const evidenceBlob = normalizeText([
+        product.slug,
         product.name,
         product.brand,
-        product.description,
+        effectiveDescription,
+        product.badge,
+        ...effectiveBenefits,
+        ...catalogFacts,
+        ...catalogTags,
+      ].filter(Boolean).join(' '));
+
+      const searchBlob = normalizeText([
+        evidenceBlob,
         displayCategory,
-        ...(product.benefits ?? []),
         ...activeSkus.flatMap((sku) => [
           relationName(sku.sabores),
           relationName(sku.tamanhos),
@@ -153,6 +180,11 @@ export async function searchCatalog(
       if (q) {
         const terms = q.split(/\s+/).filter(Boolean);
         if (!terms.every((term) => searchBlob.includes(term))) return null;
+      }
+
+      if (evidenceQuery) {
+        const evidenceTerms = evidenceQuery.split(/\s+/).filter(Boolean);
+        if (!evidenceTerms.every((term) => evidenceBlob.includes(term))) return null;
       }
 
       const sortedSkus = [...activeSkus].sort((a, b) => {
@@ -198,12 +230,14 @@ export async function searchCatalog(
         brand: product.brand,
         category: displayCategory,
         badge: product.badge,
-        description: product.description,
+        description: effectiveDescription,
         imageUrl,
         minPrice,
         compareAtPrice:
           compareAtPrice && compareAtPrice > minPrice ? compareAtPrice : null,
-        benefits: (product.benefits ?? []).slice(0, 5),
+        benefits: effectiveBenefits.slice(0, 8),
+        catalogFacts: catalogFacts.slice(0, 8),
+        catalogSourcePage: officialKnowledge?.sourcePage ?? null,
         variants,
       };
 

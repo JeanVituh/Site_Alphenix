@@ -34,6 +34,11 @@ const tools = [
           description:
             'Texto livre para buscar nome, marca, característica ou sabor. Use null quando a categoria já for suficiente.',
         },
+        evidence_query: {
+          type: ['string', 'null'],
+          description:
+            'Filtro estrito para objetivo/benefício. A busca considera o cadastro do Supabase e, para produtos Dark Wolf, o conhecimento curado do catálogo oficial incorporado no servidor. Use quando a indicação depender de evidência textual real (ex.: "imunidade", "sono", "foco").',
+        },
         category: {
           type: ['string', 'null'],
           enum: [
@@ -222,6 +227,7 @@ async function callGroq(
 
 function parseToolArgs(raw: string | undefined): {
   query?: string | null;
+  evidence_query?: string | null;
   category?: string | null;
   max_price?: number | null;
   in_stock_only?: boolean | null;
@@ -265,6 +271,505 @@ function fallbackHasHealthContext(text: string): boolean {
   return /gravidez|gravida|amament|pressao alta|hipertens|cardiac|coracao|medicamento|remedio|reacao adversa|doenca|menor de idade/.test(
     normalized,
   );
+}
+
+function hasWeightLossIntent(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /emagrec|perder (?:peso|gordura)|perda de (?:peso|gordura)|reduzir gordura|definicao|secar/.test(
+    normalized,
+  );
+}
+
+function explicitlyRequestsPreWorkout(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /pre[- ]?treino|energia (?:no|para o) treino|desempenho no treino/.test(normalized);
+}
+
+function explicitlyRequestsProtein(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /whey|proteina/.test(normalized);
+}
+
+function explicitlyRequestsHypercaloric(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /hipercalor|ganhar peso|aumentar peso/.test(normalized);
+}
+
+function hasStimulantRestriction(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /sem cafeina|nao (?:quero|posso|gosto de) cafeina|sensivel a cafeina|sensibilidade a cafeina|evitar estimulante|sem estimulante/.test(
+    normalized,
+  );
+}
+
+function applyRecommendationPolicy(
+  args: ReturnType<typeof parseToolArgs>,
+  lastUserMessage: string,
+  recentContext: string,
+): ReturnType<typeof parseToolArgs> {
+  const weightLoss = hasWeightLossIntent(recentContext);
+  if (!weightLoss) return args;
+
+  // Em emagrecimento, hipercalórico não é uma sugestão coerente por padrão.
+  // Só respeitamos essa categoria se o próprio cliente a pedir explicitamente.
+  if (args.category === 'hipercaloricos' && !explicitlyRequestsHypercaloric(lastUserMessage)) {
+    return { ...args, query: null, category: 'termogenicos e energia' };
+  }
+
+  // Pré-treino também não é o padrão para emagrecimento. Só entra quando
+  // a pessoa pediu especificamente energia/desempenho/pré-treino.
+  if (args.category === 'pre-treino' && !explicitlyRequestsPreWorkout(lastUserMessage)) {
+    return { ...args, query: null, category: 'termogenicos e energia' };
+  }
+
+  // Em uma pergunta ampla como "quero emagrecer, o que recomenda?", a
+  // busca principal deve ser pelos termogênicos reais da loja. Se a pessoa
+  // pediu whey/proteína explicitamente, preservamos a categoria de proteínas.
+  if (
+    !args.category &&
+    !explicitlyRequestsProtein(lastUserMessage) &&
+    !explicitlyRequestsPreWorkout(lastUserMessage) &&
+    !explicitlyRequestsHypercaloric(lastUserMessage)
+  ) {
+    return { ...args, query: null, category: 'termogenicos e energia' };
+  }
+
+  return args;
+}
+
+function filterRecommendationsForIntent(
+  products: AssistantProductRecommendation[],
+  lastUserMessage: string,
+  recentContext: string,
+): AssistantProductRecommendation[] {
+  if (!hasWeightLossIntent(recentContext)) return products;
+
+  const avoidStimulants =
+    fallbackHasHealthContext(recentContext) || hasStimulantRestriction(recentContext);
+
+  return products.filter((product) => {
+    const category = normalizeFallbackText(product.category);
+    if (category === 'hipercaloricos' && !explicitlyRequestsHypercaloric(lastUserMessage)) {
+      return false;
+    }
+    if (category === 'pre-treino' && !explicitlyRequestsPreWorkout(lastUserMessage)) {
+      return false;
+    }
+    if (
+      avoidStimulants &&
+      (category === 'termogenicos e energia' || category === 'pre-treino')
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function formatBRL(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+}
+
+function buildGroundedWeightLossReply(
+  products: AssistantProductRecommendation[],
+): string {
+  if (!products.length) {
+    return 'Para perda de gordura, alimentação e déficit calórico são a base. Não encontrei agora uma opção compatível no catálogo para recomendar com segurança.';
+  }
+
+  const lines = products.slice(0, 3).map((product, index) => {
+    const ready = product.variants.some((variant) => variant.stock > 0);
+    const availability = ready ? 'pronta entrega' : 'disponível por encomenda';
+    const benefit = product.benefits.slice(0, 2).join('; ');
+    return `${index + 1}️⃣ ${product.name} — a partir de ${formatBRL(product.minPrice)} (${availability})${benefit ? ` · ${benefit}` : ''}`;
+  });
+
+  const hasThermogenic = products.some(
+    (product) => normalizeFallbackText(product.category) === 'termogenicos e energia',
+  );
+
+  const intro = hasThermogenic
+    ? 'Para perda de gordura, alimentação e déficit calórico são a base. No catálogo da Alphenix, eu começaria pelas opções de Termogênicos & Energia; elas não emagrecem sozinhas, mas podem complementar a rotina se você não tiver restrição a estimulantes.'
+    : 'Para perda de gordura, alimentação e déficit calórico são a base. Separei opções do catálogo que combinam com o que você pediu, sem incluir hipercalóricos.';
+
+  return `${intro}\n\n${lines.join('\n')}\n\nConfira os cards abaixo para ver as variações e o status de cada opção.`;
+}
+
+
+function hasVitaminWellnessTopic(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /vitamina|mineral|multivitamin|magnes|omega\s*3|b12|d3|coenzima|q10|nac|resveratrol|cromo|picolinato|melatonina|sleep zen|sono|dormir|bem estar|saude geral|imunidade|ossos|saude ossea|articulac|cartilagem|mobilidade|cabelo|unhas|pele|foco|concentrac|memoria|antioxidante|saude cardiovascular|vitalidade|disposicao|energia no dia a dia|respirator/.test(
+    normalized,
+  );
+}
+
+function hasSymptomOrDiagnosisContext(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /cansac|fadiga persistente|fraqueza|tontura|anemia|queda de cabelo|caibra|cambra|deficiencia|exame|diagnostic|insonia|dor persistente|lesao|sintoma|tratamento|ansiedade|depressao|panico|diabetes|cancer|hipertens|pressao alta|colesterol alto|doenca renal|doenca hepatica/.test(
+    normalized,
+  );
+}
+
+function asksForTreatmentOrDose(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /o que (?:eu )?(?:tomo|tomar)|qual (?:vitamina|suplemento) (?:eu )?(?:tomo|tomar)|quanto (?:eu )?(?:tomo|tomar)|qual dose|dosagem|tratar|tratamento|preciso tomar|devo tomar|cura|prevenir doenca/.test(
+    normalized,
+  );
+}
+
+function asksOnlyAvailability(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /\btem\b|\btemos\b|vende|voces tem|vocês tem|disponivel|estoque|encomenda/.test(normalized);
+}
+
+function isGenericVitaminQuestion(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  const mentionsSpecific = /vitamina\s*c\b|vitamina\s*d3?\b|\bb12\b|magnes|omega\s*3|multivitamin|coenzima|\bq10\b|\bnac\b|resveratrol|picolinato|cromo|melatonina|sleep zen|osteo flex/.test(
+    normalized,
+  );
+  const mentionsObjective = /sono|dormir|foco|concentrac|memoria|saude geral|imunidade|ossos|articulac|cabelo|unhas|pele|antioxidante|cardiovascular|vitalidade|disposicao/.test(
+    normalized,
+  );
+  return /qual vitamina|vitamina recomenda|recomenda.*vitamina|alguma vitamina/.test(normalized) && !mentionsSpecific && !mentionsObjective;
+}
+
+type VitaminCatalogIntent = {
+  query?: string | null;
+  evidence_query?: string | null;
+  category?: string | null;
+  label: string;
+};
+
+function detectSpecificVitaminIntent(text: string): VitaminCatalogIntent | null {
+  const normalized = normalizeFallbackText(text);
+
+  if (/vitamina\s*c\b/.test(normalized)) {
+    return { query: 'vitamina-c-1000mg-dark-wolf', category: 'vitaminas e minerais', label: 'vitamina C' };
+  }
+  if (/vitamina\s*d3?\b/.test(normalized)) {
+    return { query: 'vitamina-d3-2000ui-dark-wolf', category: 'vitaminas e minerais', label: 'vitamina D3' };
+  }
+  if (/\bb12\b|metilcobalamina/.test(normalized)) {
+    return { query: 'vitamina-b12-metilcobalamina-dark-wolf', category: 'vitaminas e minerais', label: 'vitamina B12' };
+  }
+  if (/multivitamin.*kids|kids.*multivitamin/.test(normalized)) {
+    return { query: 'multivitaminico-kids-az-dark-wolf', category: 'vitaminas e minerais', label: 'multivitamínico infantil' };
+  }
+  if (/multivitamin/.test(normalized)) {
+    return { query: 'multivitaminico-az-dark-wolf', category: 'vitaminas e minerais', label: 'multivitamínico' };
+  }
+  if (/magnesio l[- ]?treonato|l[- ]?treonato/.test(normalized)) {
+    return { query: 'magnesio-l-treonato-ultra-dark-wolf', category: 'vitaminas e minerais', label: 'magnésio L-treonato' };
+  }
+  if (/magnesio inositol/.test(normalized)) {
+    return { query: 'magnesio-inositol-dark-wolf', category: 'vitaminas e minerais', label: 'magnésio com inositol' };
+  }
+  if (/mag[- ]?six/.test(normalized)) {
+    return { query: 'mag-six-dark-wolf', category: 'vitaminas e minerais', label: 'Mag-Six' };
+  }
+  if (/magnes/.test(normalized)) {
+    return { query: 'magnesio', category: 'vitaminas e minerais', label: 'magnésio' };
+  }
+  if (/omega\s*3/.test(normalized)) {
+    return { query: 'omega-3-1000mg-dark-wolf', category: 'vitaminas e minerais', label: 'ômega 3' };
+  }
+  if (/coenzima\s*q10|\bq10\b/.test(normalized)) {
+    return { query: 'coenzima q10', category: 'vitaminas e minerais', label: 'coenzima Q10' };
+  }
+  if (/\bnac\b|acetilcisteina/.test(normalized)) {
+    return { query: 'nac-600mg-dark-wolf', category: 'vitaminas e minerais', label: 'NAC' };
+  }
+  if (/resveratrol/.test(normalized)) {
+    return { query: 'trans-resveratrol-dark-wolf', category: 'vitaminas e minerais', label: 'resveratrol' };
+  }
+  if (/picolinato|\bcromo\b/.test(normalized)) {
+    return { query: 'picolinato-de-cromo-250mcg-dark-wolf', category: 'vitaminas e minerais', label: 'picolinato de cromo' };
+  }
+  if (/osteo flex/.test(normalized)) {
+    return { query: 'osteo-flex-dark-wolf', category: 'vitaminas e minerais', label: 'Osteo Flex' };
+  }
+  if (/melatonina/.test(normalized)) {
+    return { query: 'melatonina-liquida-dark-wolf', category: 'bem-estar e sono', label: 'melatonina' };
+  }
+  if (/sleep zen/.test(normalized)) {
+    return { query: 'sleep-zen-dark-wolf', category: 'bem-estar e sono', label: 'Sleep Zen' };
+  }
+
+  return null;
+}
+
+function productAvailability(product: AssistantProductRecommendation): string {
+  return product.variants.some((variant) => variant.stock > 0)
+    ? 'pronta entrega'
+    : 'disponível por encomenda';
+}
+
+function buildNeutralCatalogList(
+  intro: string,
+  products: AssistantProductRecommendation[],
+): string {
+  if (!products.length) return intro;
+
+  const lines = products.slice(0, 3).map((product, index) => {
+    const benefits = product.benefits.slice(0, 2).join('; ');
+    const detail = benefits ? ` · ${benefits}` : product.description ? ` · ${product.description}` : '';
+    return `${index + 1}️⃣ ${product.name} — a partir de ${formatBRL(product.minPrice)} (${productAvailability(product)})${detail}`;
+  });
+
+  return `${intro}\n\n${lines.join('\n')}\n\nConfira os cards abaixo para ver as opções e o status de disponibilidade.`;
+}
+
+async function searchPrioritizedProducts(
+  slugs: string[],
+  maxPrice: number | null,
+  stockOnly: boolean,
+  limit = 3,
+): Promise<AssistantProductRecommendation[]> {
+  const load = async (inStockOnly: boolean) => {
+    const groups = await Promise.all(
+      slugs.map((slug) =>
+        searchCatalog({
+          query: slug,
+          max_price: maxPrice,
+          in_stock_only: inStockOnly,
+          limit: 1,
+        }),
+      ),
+    );
+    return groups.flat();
+  };
+
+  let products = await load(stockOnly);
+  if (!products.length && stockOnly) products = await load(false);
+
+  const bySlug = new Map(products.map((product) => [product.slug, product]));
+  return slugs
+    .map((slug) => bySlug.get(slug))
+    .filter((product): product is AssistantProductRecommendation => Boolean(product))
+    .slice(0, limit);
+}
+
+function wellnessGoalSlugs(
+  normalized: string,
+  avoidStimulants: boolean,
+): { intro: string; slugs: string[] } | null {
+  if (/imunidade|sistema imunologico|baixa imunidade/.test(normalized)) {
+    return {
+      intro: 'Para suporte à imunidade, selecionei opções cujo catálogo oficial Dark Wolf menciona esse objetivo. Isso é suporte nutricional, não tratamento ou prevenção de doenças.',
+      slugs: [
+        'vitamina-c-1000mg-dark-wolf',
+        'vitamina-d3-2000ui-dark-wolf',
+        'multivitaminico-az-dark-wolf',
+        'nac-600mg-dark-wolf',
+        'omega-3-1000mg-dark-wolf',
+        'mag-six-dark-wolf',
+      ],
+    };
+  }
+
+  if (/articulac|cartilagem|mobilidade|juntas/.test(normalized)) {
+    return {
+      intro: 'Para suporte às articulações e mobilidade, a opção mais diretamente relacionada no catálogo é o Osteo Flex. Não vou tratar isso como solução para dor ou lesão.',
+      slugs: ['osteo-flex-dark-wolf'],
+    };
+  }
+
+  if (/ossos|saude ossea/.test(normalized)) {
+    return {
+      intro: 'Para suporte à saúde óssea, estas são as opções cujo catálogo oficial traz relação direta com esse objetivo.',
+      slugs: ['vitamina-d3-2000ui-dark-wolf', 'mag-six-dark-wolf'],
+    };
+  }
+
+  if (/sono|dormir|descanso|relaxamento|bem estar/.test(normalized)) {
+    return {
+      intro: 'Para sono e relaxamento, selecionei itens que o catálogo oficial posiciona para qualidade do descanso. Eles não são tratamento para insônia ou ansiedade.',
+      slugs: [
+        'sleep-zen-dark-wolf',
+        'magnesio-inositol-dark-wolf',
+        'magnesio-l-treonato-ultra-dark-wolf',
+        'mag-six-dark-wolf',
+        'melatonina-liquida-dark-wolf',
+      ],
+    };
+  }
+
+  if (/foco|concentrac|atencao|memoria|desempenho mental/.test(normalized)) {
+    const slugs = [
+      'magnesio-l-treonato-ultra-dark-wolf',
+      'magnesio-inositol-dark-wolf',
+      'vitamina-b12-metilcobalamina-dark-wolf',
+      'mag-six-dark-wolf',
+    ];
+    if (!avoidStimulants) slugs.unshift('neuro-focus-dark-wolf');
+    return {
+      intro: avoidStimulants
+        ? 'Para foco e memória, como você mencionou uma restrição a estimulantes/saúde, deixei de fora as opções com cafeína e selecionei alternativas do catálogo sem essa prioridade.'
+        : 'Para foco e concentração, selecionei opções diretamente relacionadas a esse objetivo no catálogo. O Neuro Focus contém cafeína, então vale considerar sua sensibilidade a estimulantes.',
+      slugs,
+    };
+  }
+
+  if (/pele|cabelo|unhas|colageno/.test(normalized)) {
+    return {
+      intro: 'Para pele/cabelos, selecionei somente produtos cujo catálogo oficial menciona suporte relacionado a esse objetivo.',
+      slugs: [
+        'multivitaminico-az-dark-wolf',
+        'vitamina-c-1000mg-dark-wolf',
+        'trans-resveratrol-dark-wolf',
+      ],
+    };
+  }
+
+  if (/antioxidante|radicais livres|estresse oxidativo/.test(normalized)) {
+    return {
+      intro: 'Para suporte antioxidante, estas opções têm essa característica descrita no catálogo oficial Dark Wolf.',
+      slugs: [
+        'nac-600mg-dark-wolf',
+        'trans-resveratrol-dark-wolf',
+        'coenzima-q10-200mg-dark-wolf',
+        'vitamina-c-1000mg-dark-wolf',
+      ],
+    };
+  }
+
+  if (/saude cardiovascular|saude do coracao|coracao saudavel/.test(normalized)) {
+    return {
+      intro: 'Para suporte cardiovascular geral, estas opções são descritas dessa forma no catálogo. Se houver doença, sintomas ou uso de medicação, a escolha deve ser confirmada com um profissional de saúde.',
+      slugs: [
+        'omega-3-1000mg-dark-wolf',
+        'coenzima-q10-100mg-dark-wolf',
+        'coenzima-q10-200mg-dark-wolf',
+        'trans-resveratrol-dark-wolf',
+      ],
+    };
+  }
+
+  if (/respirator/.test(normalized)) {
+    return {
+      intro: 'Para suporte respiratório geral, o catálogo oficial relaciona o NAC a esse objetivo. Isso não substitui avaliação de sintomas respiratórios.',
+      slugs: ['nac-600mg-dark-wolf'],
+    };
+  }
+
+  if (/vitalidade|disposicao|energia no dia a dia|mais energia/.test(normalized)) {
+    return {
+      intro: 'Para disposição e energia no dia a dia, selecionei opções que o catálogo relaciona ao metabolismo energético e vitalidade. Se o cansaço for persistente, isso merece avaliação profissional em vez de escolher suplemento no escuro.',
+      slugs: [
+        'multivitaminico-az-dark-wolf',
+        'coenzima-q10-100mg-dark-wolf',
+        'vitamina-b12-metilcobalamina-dark-wolf',
+      ],
+    };
+  }
+
+  if (/saude geral|equilibrio do organismo|dia a dia/.test(normalized)) {
+    return {
+      intro: 'Para uma opção geral de rotina, selecionei produtos do catálogo voltados a aporte de micronutrientes e saúde geral. Isso não significa que você tenha deficiência ou precise suplementar.',
+      slugs: [
+        'multivitaminico-az-dark-wolf',
+        'omega-3-1000mg-dark-wolf',
+        'vitamina-c-1000mg-dark-wolf',
+      ],
+    };
+  }
+
+  return null;
+}
+
+async function buildVitaminWellnessResponse(
+  history: AssistantHistoryMessage[],
+): Promise<AssistantApiResponse | null> {
+  const lastUserMessage = [...history].reverse().find((message) => message.role === 'user')?.content ?? '';
+  if (!lastUserMessage || !hasVitaminWellnessTopic(lastUserMessage)) return null;
+
+  const recentContext = history
+    .slice(-6)
+    .map((message) => message.content)
+    .join(' ');
+
+  const specific = detectSpecificVitaminIntent(lastUserMessage);
+  const stockOnly = fallbackStockOnly(lastUserMessage);
+  const maxPrice = fallbackBudget(lastUserMessage);
+
+  if (
+    (hasSymptomOrDiagnosisContext(recentContext) || asksForTreatmentOrDose(lastUserMessage)) &&
+    !(specific && asksOnlyAvailability(lastUserMessage))
+  ) {
+    return {
+      reply:
+        'Como você mencionou sintoma, diagnóstico, deficiência ou uma dúvida de dose/tratamento, não é seguro eu escolher um suplemento para você. Posso mostrar produtos que a Alphenix vende, mas para decidir o que usar ou a dose, confirme com médico ou nutricionista.',
+      products: [],
+    };
+  }
+
+  if (isGenericVitaminQuestion(lastUserMessage)) {
+    return {
+      reply:
+        'Claro. Qual é seu objetivo? Posso te ajudar com saúde geral, imunidade, ossos/articulações, sono/relaxamento, foco/memória, pele/cabelos ou um item específico como vitamina C, D3, B12, magnésio, ômega 3 ou multivitamínico.',
+      products: [],
+    };
+  }
+
+  if (specific) {
+    let products = await searchCatalog({
+      query: specific.query,
+      category: specific.category,
+      max_price: maxPrice,
+      in_stock_only: stockOnly,
+      limit: 3,
+    });
+
+    if (!products.length && stockOnly) {
+      products = await searchCatalog({
+        query: specific.query,
+        category: specific.category,
+        max_price: maxPrice,
+        in_stock_only: false,
+        limit: 3,
+      });
+    }
+
+    const intro = products.length
+      ? `Encontrei ${specific.label} no catálogo da Alphenix. As informações abaixo usam o cadastro da loja e o catálogo oficial Dark Wolf; não vou transformar isso em diagnóstico ou prescrição.`
+      : `Não encontrei ${specific.label} compatível com esse filtro no catálogo agora.`;
+
+    return {
+      reply: buildNeutralCatalogList(intro, products),
+      products: products.slice(0, 3),
+    };
+  }
+
+  const normalized = normalizeFallbackText(lastUserMessage);
+  const avoidStimulants =
+    hasStimulantRestriction(recentContext) || fallbackHasHealthContext(recentContext);
+  const goal = wellnessGoalSlugs(normalized, avoidStimulants);
+
+  if (goal) {
+    const products = await searchPrioritizedProducts(
+      goal.slugs,
+      maxPrice,
+      stockOnly,
+      3,
+    );
+
+    if (!products.length) {
+      return {
+        reply:
+          'Entendi o objetivo, mas não encontrei uma opção compatível com esse filtro no catálogo agora. Posso tentar outra faixa de preço ou mostrar opções disponíveis por encomenda.',
+        products: [],
+      };
+    }
+
+    return {
+      reply: buildNeutralCatalogList(goal.intro, products),
+      products,
+    };
+  }
+
+  return null;
 }
 
 function fallbackCategories(text: string): string[] {
@@ -390,6 +895,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Mensagem inválida.' }, { status: 400 });
     }
 
+    const lastUserMessage = history.at(-1)?.content ?? '';
+    const recentContext = history
+      .slice(-6)
+      .map((message) => message.content)
+      .join(' ');
+
+    // Vitaminas/minerais e sono têm uma política determinística antes do LLM.
+    // Assim o mascote não transforma sintomas em diagnóstico, não inventa
+    // benefícios e só mostra produtos que realmente existem no Supabase.
+    const vitaminWellnessResponse = await buildVitaminWellnessResponse(history);
+    if (vitaminWellnessResponse) {
+      return NextResponse.json(vitaminWellnessResponse);
+    }
+
     const input: unknown[] = history.map((message) => ({
       role: message.role,
       content: message.content,
@@ -407,7 +926,8 @@ export async function POST(request: NextRequest) {
 
       const toolOutputs = await Promise.all(
         toolCalls.map(async (call) => {
-          const args = parseToolArgs(call.arguments);
+          const parsedArgs = parseToolArgs(call.arguments);
+          const args = applyRecommendationPolicy(parsedArgs, lastUserMessage, recentContext);
           let products = await searchCatalog(args);
           let orderFallbackUsed = false;
 
@@ -422,6 +942,7 @@ export async function POST(request: NextRequest) {
             orderFallbackUsed = products.length > 0;
           }
 
+          products = filterRecommendationsForIntent(products, lastUserMessage, recentContext);
           products.forEach((product) => recommendations.set(product.slug, product));
 
           const readyCount = products.filter((product) =>
@@ -457,7 +978,10 @@ export async function POST(request: NextRequest) {
                 has_order_option: product.variants.some(
                   (variant) => variant.available && variant.stock <= 0,
                 ),
-                benefits: product.benefits.slice(0, 3),
+                description: product.description,
+                benefits: product.benefits.slice(0, 5),
+                catalog_facts: product.catalogFacts.slice(0, 6),
+                official_catalog_page: product.catalogSourcePage,
                 variants: product.variants.slice(0, 4).map((variant) => ({
                   label: variant.label,
                   price: variant.price,
@@ -474,12 +998,68 @@ export async function POST(request: NextRequest) {
       response = await callGroq(input);
     }
 
-    const reply = extractText(response) ||
+    let groundedProducts = filterRecommendationsForIntent(
+      [...recommendations.values()],
+      lastUserMessage,
+      recentContext,
+    ).slice(0, 3);
+
+    // Proteção final para perguntas amplas de emagrecimento: se o modelo não
+    // pesquisou a categoria correta (ou não chamou ferramenta), fazemos a
+    // consulta no servidor. Assim hipercalóricos e nomes inventados nunca
+    // viram recomendação nesse fluxo.
+    if (
+      hasWeightLossIntent(recentContext) &&
+      !fallbackHasHealthContext(recentContext) &&
+      !hasStimulantRestriction(recentContext) &&
+      !explicitlyRequestsProtein(lastUserMessage) &&
+      !explicitlyRequestsPreWorkout(lastUserMessage) &&
+      !explicitlyRequestsHypercaloric(lastUserMessage)
+    ) {
+      const stockOnly = fallbackStockOnly(lastUserMessage);
+      let thermogenics = await searchCatalog({
+        category: 'termogenicos e energia',
+        in_stock_only: stockOnly,
+        max_price: fallbackBudget(lastUserMessage),
+        limit: 3,
+      });
+
+      // Mesmo quando o cliente pergunta por pronta entrega, se não houver
+      // estoque imediato mostramos a possibilidade de encomenda.
+      if (thermogenics.length === 0 && stockOnly) {
+        thermogenics = await searchCatalog({
+          category: 'termogenicos e energia',
+          in_stock_only: false,
+          max_price: fallbackBudget(lastUserMessage),
+          limit: 3,
+        });
+      }
+
+      if (thermogenics.length > 0) {
+        groundedProducts = thermogenics.slice(0, 3);
+      }
+    }
+
+    const modelReply = extractText(response) ||
       'Consegui consultar o catálogo, mas não consegui montar a resposta agora. Tente perguntar de outra forma.';
+
+    // Em objetivo de emagrecimento, a resposta final é montada a partir dos
+    // próprios produtos retornados pelo Supabase. Isso impede alucinações como
+    // nomes de produtos inexistentes e evita sugestões incoerentes como
+    // hipercalórico sem o cliente ter pedido.
+    const weightLoss = hasWeightLossIntent(recentContext);
+    const avoidStimulants =
+      fallbackHasHealthContext(recentContext) || hasStimulantRestriction(recentContext);
+
+    const reply = weightLoss && groundedProducts.length > 0
+      ? buildGroundedWeightLossReply(groundedProducts)
+      : weightLoss && avoidStimulants
+        ? 'Para perda de gordura, alimentação e déficit calórico são a base. Como você mencionou uma restrição relacionada à saúde ou a estimulantes, prefiro não indicar termogênico/pré-treino. Posso te ajudar a procurar uma opção sem estimulantes ou você pode confirmar com médico/nutricionista o que faz sentido para você.'
+        : modelReply;
 
     const result: AssistantApiResponse = {
       reply,
-      products: [...recommendations.values()].slice(0, 3),
+      products: groundedProducts,
     };
 
     return NextResponse.json(result);

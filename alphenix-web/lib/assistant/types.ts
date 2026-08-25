@@ -31,6 +31,8 @@ export interface AssistantProductRecommendation {
   minPrice: number;
   compareAtPrice: number | null;
   benefits: string[];
+  catalogFacts: string[];
+  catalogSourcePage: number | null;
   variants: AssistantVariant[];
 }
 

@@ -71,3 +71,49 @@ Se a Groq responder com limite de uso (`429`), o chat mostra uma mensagem amigá
 ## Observação sobre as poses
 
 A primeira versão usa o mesmo desenho oficial do mascote e muda seu comportamento visual conforme o estado (inclinação, pulso, fala, badge de recomendação e confirmação). A estrutura já separa os estados; no futuro você pode substituir cada estado por um PNG específico sem mudar a lógica da IA/chat.
+
+## Regras para vitaminas, minerais e bem-estar
+
+- Perguntas genéricas como “qual vitamina você recomenda?” geram uma pergunta de objetivo antes de qualquer produto.
+- Pedidos por itens específicos (vitamina C, D3, B12, magnésio, ômega 3, multivitamínico, CoQ10, NAC, resveratrol, cromo, melatonina etc.) consultam o catálogo real e mostram apenas nomes/preços/disponibilidade cadastrados.
+- Sintomas, diagnósticos, deficiência em exames e pedidos de dose/tratamento não viram prescrição pelo mascote.
+- Quando o cliente só pergunta se a loja vende um item específico, o card pode ser mostrado mesmo em contexto de saúde, sem indicar dose/tratamento.
+- Objetivos como imunidade, ossos, pele/cabelo/unhas só geram indicação quando o próprio cadastro traz evidência textual para aquele benefício; o assistente não completa benefícios ausentes com conhecimento geral.
+- Para sono/bem-estar, o assistente prioriza a categoria `bem-estar e sono` e não apresenta os itens como tratamento para insônia.
+- Para foco cognitivo, a busca exige evidência no nome/descrição/benefícios (no banco atual, o Magnésio L-Treonato Ultra possui descrição com “foco cognitivo e sono”).
+- Produtos sem estoque imediato, mas com `available=true`, continuam aparecendo como disponíveis por encomenda.
+
+## Catálogo oficial Dark Wolf integrado (v7)
+
+O assistente agora possui uma camada de conhecimento curada em `lib/assistant/darkWolfCatalog.ts`, baseada no catálogo oficial Dark Wolf de 29 páginas fornecido pela loja. Foram mapeados os 26 produtos das páginas 3 a 28.
+
+Essa camada complementa o Supabase com descrições, benefícios, fatos objetivos e palavras-chave de intenção. Preço, estoque, disponibilidade e variações continuam vindo exclusivamente do Supabase.
+
+Exemplos de intenção cobertos de forma determinística:
+
+- imunidade: Vitamina C, Vitamina D3, Multivitamínico AZ e outras opções com evidência no catálogo;
+- ossos: Vitamina D3 e Mag-Six;
+- articulações/mobilidade: Osteo Flex;
+- sono/relaxamento: Sleep Zen, Magnésio Inositol, L-Treonato, Mag-Six e Melatonina;
+- foco/memória: Neuro Focus (com aviso de cafeína), L-Treonato, Magnésio Inositol e B12;
+- antioxidante: NAC, Resveratrol, CoQ10 e Vitamina C;
+- pele/cabelos: Multivitamínico AZ, Vitamina C e Resveratrol;
+- saúde cardiovascular geral: Ômega 3, CoQ10 e Resveratrol;
+- energia/disposição: Multivitamínico AZ, CoQ10 e B12.
+
+O catálogo de marketing contém algumas alegações médicas fortes. Elas foram intencionalmente removidas da camada usada pela IA. O assistente não deve afirmar que suplementos tratam/previnem diabetes, câncer, hipertensão, colesterol, ansiedade, lesões ou outras doenças.
+
+### Sincronizar essas informações no Supabase (opcional)
+
+O arquivo `supabase/enriquecimento_catalogo_dark_wolf.sql` atualiza somente `description` e `benefits` dos produtos Dark Wolf com a versão curada. Ele não altera preço, estoque, SKU ou variações.
+
+A IA já funciona com as informações oficiais mesmo sem executar esse SQL. Rode o script no Supabase apenas se quiser que o restante do site também passe a usar as descrições/benefícios enriquecidos diretamente da tabela `products`.
+
+### Inconsistências do PDF tratadas
+
+Durante a revisão completa, alguns pontos do material exigiram cautela:
+
+- Vitamina D3: o texto extraído apresenta "200UI" em um ponto, enquanto a embalagem/cadastro identificam 2000UI; a integração usa o produto `vitamina-d3-2000ui-dark-wolf` e evita depender do trecho inconsistente.
+- Trans Resveratrol: o título do PDF mostra "300MG" em um ponto, mas a descrição/tabela informam 30mg; a integração usa 30mg.
+- Creatina: o texto promocional fala em 99% e o selo visual apresenta 98,6%; a IA fala apenas em "laudo apresentado pela marca", sem fixar um percentual conflitante.
+- Algumas páginas trazem alegações médicas/promocionais fortes; essas alegações foram filtradas e não são usadas como recomendação clínica pelo mascote.
