@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -37,7 +38,7 @@ const INITIAL_MESSAGE: ChatMessage = {
   id: 'welcome',
   role: 'assistant',
   content:
-    'Fala! 🔥 Eu sou o Assistente Alphenix. Me diga seu objetivo, orçamento ou o produto que está procurando e eu te ajudo a escolher.',
+    'Fala! 🔥 Eu sou o Nix, mascote e assistente virtual da Alphenix. Me diga seu objetivo, orçamento ou o produto que está procurando e eu te ajudo a escolher.',
 };
 
 function assetUrl(path: string | null): string | null {
@@ -68,13 +69,13 @@ function MascotVisual({ state, compact = false }: { state: MascotState; compact?
   return (
     <div
       className={`${styles.mascotVisual} ${styles[`mascotState_${state}`]} ${compact ? styles.mascotCompact : ''}`}
-      aria-label={`Mascote Alphenix: ${stateLabel(state)}`}
+      aria-label={`Mascote Nix da Alphenix: ${stateLabel(state)}`}
     >
       <span className={styles.mascotGlow} aria-hidden="true" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={MASCOT_IMAGE_BY_STATE[state]}
-        alt={`Mascote da Alphenix — ${stateLabel(state)}`}
+        alt={`Nix, mascote da Alphenix — ${stateLabel(state)}`}
         className={styles.mascotImage}
         draggable={false}
       />
@@ -85,9 +86,11 @@ function MascotVisual({ state, compact = false }: { state: MascotState; compact?
 function ProductCard({
   product,
   onAdded,
+  onViewProduct,
 }: {
   product: AssistantProductRecommendation;
   onAdded: () => void;
+  onViewProduct: () => void;
 }) {
   const { addItem } = useCart();
   const readyFirst = useMemo(
@@ -178,7 +181,11 @@ function ProductCard({
         )}
 
         <div className={styles.productActions}>
-          <Link href={`/produtos/${product.slug}`} className={styles.viewButton}>
+          <Link
+            href={`/produtos/${product.slug}`}
+            className={styles.viewButton}
+            onClick={onViewProduct}
+          >
             Ver produto
           </Link>
           {product.variants.length > 0 && (
@@ -209,10 +216,47 @@ export function AlphenixAssistant() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const scrollMessagesToEnd = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior });
+    });
+  }, []);
+
   useEffect(() => {
     if (!isOpen) return;
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, loading, isOpen]);
+    scrollMessagesToEnd('smooth');
+  }, [messages, loading, isOpen, scrollMessagesToEnd]);
+
+  // Em celulares, o teclado virtual altera a área realmente visível da tela.
+  // A variável abaixo faz o painel acompanhar o Visual Viewport e evita que o
+  // campo de texto fique por cima da última mensagem do bot.
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return;
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const syncViewport = () => {
+      document.documentElement.style.setProperty(
+        '--alphenix-visual-viewport-height',
+        `${viewport.height}px`,
+      );
+      scrollMessagesToEnd('auto');
+    };
+
+    syncViewport();
+    viewport.addEventListener('resize', syncViewport);
+    viewport.addEventListener('scroll', syncViewport);
+
+    return () => {
+      viewport.removeEventListener('resize', syncViewport);
+      viewport.removeEventListener('scroll', syncViewport);
+      document.documentElement.style.removeProperty('--alphenix-visual-viewport-height');
+    };
+  }, [isOpen, scrollMessagesToEnd]);
 
   useEffect(() => {
     return () => {
@@ -249,6 +293,23 @@ export function AlphenixAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: nextMessages.map(({ role, content: text }) => ({ role, content: text })),
+          shownProductSlugs: [
+            ...new Set(
+              nextMessages.flatMap((message) =>
+                (message.products ?? []).map((product) => product.slug),
+              ),
+            ),
+          ],
+          lastRecommendationCategories: (() => {
+            const lastRecommendation = [...nextMessages]
+              .reverse()
+              .find((message) => message.role === 'assistant' && message.products?.length);
+            return [
+              ...new Set(
+                (lastRecommendation?.products ?? []).map((product) => product.category),
+              ),
+            ];
+          })(),
         }),
       });
 
@@ -292,13 +353,13 @@ export function AlphenixAssistant() {
   }
 
   return (
-    <aside className={styles.root} aria-label="Assistente virtual Alphenix">
+    <aside className={styles.root} aria-label="Nix, assistente virtual da Alphenix">
       {isOpen && (
-        <section className={styles.panel} aria-label="Chat com Assistente Alphenix">
+        <section className={styles.panel} aria-label="Chat com Nix, assistente da Alphenix">
           <header className={styles.header}>
             <MascotVisual state={mascotState} compact />
             <div className={styles.headerText}>
-              <strong>Assistente Alphenix</strong>
+              <strong>Nix • Assistente Alphenix</strong>
               <span><i className={styles.onlineDot} /> IA do catálogo • {stateLabel(mascotState)}</span>
             </div>
             <button
@@ -323,7 +384,12 @@ export function AlphenixAssistant() {
                 {message.products?.length ? (
                   <div className={styles.recommendations}>
                     {message.products.map((product) => (
-                      <ProductCard key={product.slug} product={product} onAdded={handleProductAdded} />
+                      <ProductCard
+                        key={product.slug}
+                        product={product}
+                        onAdded={handleProductAdded}
+                        onViewProduct={() => setIsOpen(false)}
+                      />
                     ))}
                   </div>
                 ) : null}
@@ -357,6 +423,11 @@ export function AlphenixAssistant() {
               id="alphenix-assistant-input"
               value={input}
               onChange={(event) => setInput(event.target.value.slice(0, 700))}
+              onFocus={() => {
+                // Espera o teclado abrir e reposiciona a conversa para a última mensagem.
+                window.setTimeout(() => scrollMessagesToEnd('auto'), 80);
+                window.setTimeout(() => scrollMessagesToEnd('smooth'), 280);
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
                   event.preventDefault();
@@ -388,8 +459,8 @@ export function AlphenixAssistant() {
           >
             <i className="fa-solid fa-xmark" />
           </button>
-          <strong>Tá na dúvida? 🔥</strong>
-          <span>Eu te ajudo a escolher.</span>
+          <strong>Oi, eu sou o Nix 🔥</strong>
+          <span>Posso te ajudar a escolher.</span>
         </div>
       )}
 
@@ -401,7 +472,7 @@ export function AlphenixAssistant() {
           setShowNudge(false);
           setMascotState('neutral');
         }}
-        aria-label={isOpen ? 'Fechar Assistente Alphenix' : 'Abrir Assistente Alphenix'}
+        aria-label={isOpen ? 'Fechar chat do Nix' : 'Abrir chat do Nix'}
       >
         {isOpen ? (
           <i className="fa-solid fa-xmark" aria-hidden="true" />

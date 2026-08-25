@@ -126,7 +126,7 @@ export async function searchCatalog(
       ? Math.max(0, args.max_price)
       : null;
   const inStockOnly = Boolean(args.in_stock_only);
-  const limit = Math.min(6, Math.max(1, Math.floor(args.limit ?? 3)));
+  const limit = Math.min(24, Math.max(1, Math.floor(args.limit ?? 3)));
 
   const products = ((data ?? []) as unknown as RawProduct[])
     .map((product) => {

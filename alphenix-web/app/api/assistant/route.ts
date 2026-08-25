@@ -249,6 +249,68 @@ function normalizeFallbackText(value: string): string {
     .toLowerCase();
 }
 
+const CATALOG_CATEGORIES = new Set([
+  'proteinas',
+  'creatinas',
+  'pre-treino',
+  'termogenicos e energia',
+  'vitaminas e minerais',
+  'bem-estar e sono',
+  'hipercaloricos',
+  'combos e outros',
+]);
+
+function sanitizeShownProductSlugs(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter((item) => /^[a-z0-9-]{1,120}$/.test(item)),
+    ),
+  ].slice(0, 80);
+}
+
+function sanitizeRecommendationCategories(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => normalizeFallbackText(item).trim())
+        .filter((item) => CATALOG_CATEGORIES.has(item)),
+    ),
+  ].slice(0, 4);
+}
+
+function asksForMoreProducts(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /\b(?:mais opcoes|mais produtos|outras opcoes|outros produtos|outros|outras|mostrar mais|mostra mais|ver mais|quero mais|tem mais|mais whey|mais creatina|mais creatinas|mais pre[- ]?treino|mais vitaminas?|mais magnesio)\b/.test(
+    normalized,
+  );
+}
+
+function appendMoreOptionsOffer(reply: string, hasMore: boolean): string {
+  if (!hasMore) return reply;
+  if (/posso te mostrar mais|mostrar mais opcoes|ver mais opcoes/i.test(reply)) return reply;
+  return `${reply.trim()}\n\nSe quiser, posso te mostrar mais opções.`;
+}
+
+function categoryDisplayName(category: string): string {
+  const labels: Record<string, string> = {
+    proteinas: 'proteínas e wheys',
+    creatinas: 'creatinas',
+    'pre-treino': 'pré-treinos',
+    'termogenicos e energia': 'termogênicos e energia',
+    'vitaminas e minerais': 'vitaminas e minerais',
+    'bem-estar e sono': 'bem-estar e sono',
+    hipercaloricos: 'hipercalóricos',
+    'combos e outros': 'combos e acessórios',
+  };
+  return labels[category] ?? 'produtos';
+}
+
 function fallbackBudget(text: string): number | null {
   const normalized = normalizeFallbackText(text);
   const moneyMatch = normalized.match(/r\$\s*(\d{1,4}(?:[.,]\d{1,2})?)/i);
@@ -509,16 +571,22 @@ function productAvailability(product: AssistantProductRecommendation): string {
 function buildNeutralCatalogList(
   intro: string,
   products: AssistantProductRecommendation[],
+  hasMore = false,
 ): string {
   if (!products.length) return intro;
 
   const lines = products.slice(0, 3).map((product, index) => {
     const benefits = product.benefits.slice(0, 2).join('; ');
-    const detail = benefits ? ` · ${benefits}` : product.description ? ` · ${product.description}` : '';
-    return `${index + 1}️⃣ ${product.name} — a partir de ${formatBRL(product.minPrice)} (${productAvailability(product)})${detail}`;
+    const detail = benefits
+      ? ` — ${benefits}`
+      : product.description
+        ? ` — ${product.description}`
+        : '';
+    return `${index + 1}️⃣ ${product.name}${detail}`;
   });
 
-  return `${intro}\n\n${lines.join('\n')}\n\nConfira os cards abaixo para ver as opções e o status de disponibilidade.`;
+  const base = `${intro}\n\n${lines.join('\n')}\n\nVeja os produtos nos cards abaixo 👇`;
+  return appendMoreOptionsOffer(base, hasMore);
 }
 
 async function searchPrioritizedProducts(
@@ -557,7 +625,7 @@ function wellnessGoalSlugs(
 ): { intro: string; slugs: string[] } | null {
   if (/imunidade|sistema imunologico|baixa imunidade/.test(normalized)) {
     return {
-      intro: 'Para suporte à imunidade, selecionei opções cujo catálogo oficial Dark Wolf menciona esse objetivo. Isso é suporte nutricional, não tratamento ou prevenção de doenças.',
+      intro: 'Para suporte à imunidade, selecionei opções com nutrientes e características relacionados a esse objetivo. Isso é suporte nutricional, não tratamento ou prevenção de doenças.',
       slugs: [
         'vitamina-c-1000mg-dark-wolf',
         'vitamina-d3-2000ui-dark-wolf',
@@ -571,27 +639,30 @@ function wellnessGoalSlugs(
 
   if (/articulac|cartilagem|mobilidade|juntas/.test(normalized)) {
     return {
-      intro: 'Para suporte às articulações e mobilidade, a opção mais diretamente relacionada no catálogo é o Osteo Flex. Não vou tratar isso como solução para dor ou lesão.',
+      intro: 'Para suporte às articulações e mobilidade, a opção mais diretamente relacionada é o Osteo Flex. Não vou tratar isso como solução para dor ou lesão.',
       slugs: ['osteo-flex-dark-wolf'],
     };
   }
 
   if (/ossos|saude ossea/.test(normalized)) {
     return {
-      intro: 'Para suporte à saúde óssea, estas são as opções cujo catálogo oficial traz relação direta com esse objetivo.',
+      intro: 'Para suporte à saúde óssea, estas são as opções com relação mais direta com esse objetivo.',
       slugs: ['vitamina-d3-2000ui-dark-wolf', 'mag-six-dark-wolf'],
     };
   }
 
   if (/sono|dormir|descanso|relaxamento|bem estar/.test(normalized)) {
     return {
-      intro: 'Para sono e relaxamento, selecionei itens que o catálogo oficial posiciona para qualidade do descanso. Eles não são tratamento para insônia ou ansiedade.',
+      intro: 'Para sono e relaxamento, selecionei opções voltadas à qualidade do descanso e ao relaxamento. Elas não são tratamento para insônia ou ansiedade.',
       slugs: [
+        // Os três primeiros são os mais diretamente ligados ao pedido amplo de sono.
+        // Como a resposta mostra no máximo 3 cards, a melatonina precisa estar no topo
+        // da prioridade para não ser cortada pelos magnésios.
         'sleep-zen-dark-wolf',
+        'melatonina-liquida-dark-wolf',
         'magnesio-inositol-dark-wolf',
         'magnesio-l-treonato-ultra-dark-wolf',
         'mag-six-dark-wolf',
-        'melatonina-liquida-dark-wolf',
       ],
     };
   }
@@ -606,15 +677,15 @@ function wellnessGoalSlugs(
     if (!avoidStimulants) slugs.unshift('neuro-focus-dark-wolf');
     return {
       intro: avoidStimulants
-        ? 'Para foco e memória, como você mencionou uma restrição a estimulantes/saúde, deixei de fora as opções com cafeína e selecionei alternativas do catálogo sem essa prioridade.'
-        : 'Para foco e concentração, selecionei opções diretamente relacionadas a esse objetivo no catálogo. O Neuro Focus contém cafeína, então vale considerar sua sensibilidade a estimulantes.',
+        ? 'Para foco e memória, como você mencionou uma restrição a estimulantes/saúde, deixei de fora as opções com cafeína e selecionei alternativas sem esse tipo de estimulante.'
+        : 'Para foco e concentração, selecionei opções diretamente relacionadas a esse objetivo. O Neuro Focus contém cafeína, então vale considerar sua sensibilidade a estimulantes.',
       slugs,
     };
   }
 
   if (/pele|cabelo|unhas|colageno/.test(normalized)) {
     return {
-      intro: 'Para pele/cabelos, selecionei somente produtos cujo catálogo oficial menciona suporte relacionado a esse objetivo.',
+      intro: 'Para pele e cabelos, selecionei somente produtos com benefícios relacionados a esse objetivo.',
       slugs: [
         'multivitaminico-az-dark-wolf',
         'vitamina-c-1000mg-dark-wolf',
@@ -625,7 +696,7 @@ function wellnessGoalSlugs(
 
   if (/antioxidante|radicais livres|estresse oxidativo/.test(normalized)) {
     return {
-      intro: 'Para suporte antioxidante, estas opções têm essa característica descrita no catálogo oficial Dark Wolf.',
+      intro: 'Para suporte antioxidante, selecionei opções que têm essa característica descrita entre seus benefícios.',
       slugs: [
         'nac-600mg-dark-wolf',
         'trans-resveratrol-dark-wolf',
@@ -637,7 +708,7 @@ function wellnessGoalSlugs(
 
   if (/saude cardiovascular|saude do coracao|coracao saudavel/.test(normalized)) {
     return {
-      intro: 'Para suporte cardiovascular geral, estas opções são descritas dessa forma no catálogo. Se houver doença, sintomas ou uso de medicação, a escolha deve ser confirmada com um profissional de saúde.',
+      intro: 'Para suporte cardiovascular geral, selecionei opções com benefícios relacionados a esse objetivo. Se houver doença, sintomas ou uso de medicação, a escolha deve ser confirmada com um profissional de saúde.',
       slugs: [
         'omega-3-1000mg-dark-wolf',
         'coenzima-q10-100mg-dark-wolf',
@@ -649,14 +720,14 @@ function wellnessGoalSlugs(
 
   if (/respirator/.test(normalized)) {
     return {
-      intro: 'Para suporte respiratório geral, o catálogo oficial relaciona o NAC a esse objetivo. Isso não substitui avaliação de sintomas respiratórios.',
+      intro: 'Para suporte respiratório geral, o NAC é a opção com relação mais direta a esse objetivo. Isso não substitui avaliação de sintomas respiratórios.',
       slugs: ['nac-600mg-dark-wolf'],
     };
   }
 
   if (/vitalidade|disposicao|energia no dia a dia|mais energia/.test(normalized)) {
     return {
-      intro: 'Para disposição e energia no dia a dia, selecionei opções que o catálogo relaciona ao metabolismo energético e vitalidade. Se o cansaço for persistente, isso merece avaliação profissional em vez de escolher suplemento no escuro.',
+      intro: 'Para disposição e energia no dia a dia, selecionei opções relacionadas ao metabolismo energético e à vitalidade. Se o cansaço for persistente, isso merece avaliação profissional em vez de escolher suplemento no escuro.',
       slugs: [
         'multivitaminico-az-dark-wolf',
         'coenzima-q10-100mg-dark-wolf',
@@ -667,7 +738,7 @@ function wellnessGoalSlugs(
 
   if (/saude geral|equilibrio do organismo|dia a dia/.test(normalized)) {
     return {
-      intro: 'Para uma opção geral de rotina, selecionei produtos do catálogo voltados a aporte de micronutrientes e saúde geral. Isso não significa que você tenha deficiência ou precise suplementar.',
+      intro: 'Para uma opção geral de rotina, selecionei produtos voltados ao aporte de micronutrientes e à saúde geral. Isso não significa que você tenha deficiência ou precise suplementar.',
       slugs: [
         'multivitaminico-az-dark-wolf',
         'omega-3-1000mg-dark-wolf',
@@ -681,21 +752,32 @@ function wellnessGoalSlugs(
 
 async function buildVitaminWellnessResponse(
   history: AssistantHistoryMessage[],
+  shownProductSlugs: string[],
 ): Promise<AssistantApiResponse | null> {
   const lastUserMessage = [...history].reverse().find((message) => message.role === 'user')?.content ?? '';
-  if (!lastUserMessage || !hasVitaminWellnessTopic(lastUserMessage)) return null;
+  if (!lastUserMessage) return null;
 
   const recentContext = history
     .slice(-6)
     .map((message) => message.content)
     .join(' ');
+  const recentUserContext = history
+    .filter((message) => message.role === 'user')
+    .slice(-4)
+    .map((message) => message.content)
+    .join(' ');
+
+  const wantsMore = asksForMoreProducts(lastUserMessage);
+  const topicContext = wantsMore ? recentContext : lastUserMessage;
+  if (!hasVitaminWellnessTopic(topicContext)) return null;
 
   const specific = detectSpecificVitaminIntent(lastUserMessage);
-  const stockOnly = fallbackStockOnly(lastUserMessage);
-  const maxPrice = fallbackBudget(lastUserMessage);
+  const filterContext = wantsMore ? recentUserContext : lastUserMessage;
+  const stockOnly = fallbackStockOnly(filterContext);
+  const maxPrice = fallbackBudget(filterContext);
 
   if (
-    (hasSymptomOrDiagnosisContext(recentContext) || asksForTreatmentOrDose(lastUserMessage)) &&
+    (hasSymptomOrDiagnosisContext(recentUserContext) || asksForTreatmentOrDose(lastUserMessage)) &&
     !(specific && asksOnlyAvailability(lastUserMessage))
   ) {
     return {
@@ -728,7 +810,7 @@ async function buildVitaminWellnessResponse(
         category: specific.category,
         max_price: maxPrice,
         in_stock_only: false,
-        limit: 3,
+        limit: 4,
       });
     }
 
@@ -742,34 +824,134 @@ async function buildVitaminWellnessResponse(
     };
   }
 
-  const normalized = normalizeFallbackText(lastUserMessage);
+  const normalized = normalizeFallbackText(topicContext);
   const avoidStimulants =
-    hasStimulantRestriction(recentContext) || fallbackHasHealthContext(recentContext);
+    hasStimulantRestriction(recentUserContext) || fallbackHasHealthContext(recentUserContext);
   const goal = wellnessGoalSlugs(normalized, avoidStimulants);
 
   if (goal) {
-    const products = await searchPrioritizedProducts(
+    const allProducts = await searchPrioritizedProducts(
       goal.slugs,
       maxPrice,
       stockOnly,
-      3,
+      goal.slugs.length,
     );
+
+    const shown = new Set(shownProductSlugs);
+    const availableProducts = wantsMore
+      ? allProducts.filter((product) => !shown.has(product.slug))
+      : allProducts;
+    const products = availableProducts.slice(0, 3);
+    const hasMore = availableProducts.length > products.length;
 
     if (!products.length) {
       return {
-        reply:
-          'Entendi o objetivo, mas não encontrei uma opção compatível com esse filtro no catálogo agora. Posso tentar outra faixa de preço ou mostrar opções disponíveis por encomenda.',
+        reply: wantsMore
+          ? 'Essas eram as opções mais relacionadas a esse objetivo no catálogo agora. Se quiser, posso te ajudar a comparar as que já mostrei.'
+          : 'Entendi o objetivo, mas não encontrei uma opção compatível com esse filtro no catálogo agora. Posso tentar outra faixa de preço ou mostrar opções disponíveis por encomenda.',
         products: [],
       };
     }
 
+    const intro = wantsMore
+      ? 'Claro! Separei mais algumas opções relacionadas ao mesmo objetivo, sem repetir as anteriores.'
+      : goal.intro;
+
     return {
-      reply: buildNeutralCatalogList(goal.intro, products),
+      reply: buildNeutralCatalogList(intro, products, hasMore),
       products,
     };
   }
 
   return null;
+}
+
+
+async function buildMoreProductsResponse(
+  history: AssistantHistoryMessage[],
+  shownProductSlugs: string[],
+  lastRecommendationCategories: string[],
+): Promise<AssistantApiResponse | null> {
+  const lastUserMessage =
+    [...history].reverse().find((message) => message.role === 'user')?.content ?? '';
+  if (!lastUserMessage || !asksForMoreProducts(lastUserMessage)) return null;
+
+  const recentContext = history
+    .slice(-6)
+    .map((message) => message.content)
+    .join(' ');
+
+  const explicitCategories = fallbackCategories(lastUserMessage);
+  const categories =
+    explicitCategories.length > 0
+      ? explicitCategories
+      : lastRecommendationCategories.length > 0
+        ? lastRecommendationCategories
+        : fallbackCategories(recentContext);
+
+  if (!categories.length) {
+    return {
+      reply:
+        'Claro. Mais opções de qual tipo você quer ver? Posso mostrar, por exemplo, mais wheys, creatinas, pré-treinos, vitaminas ou produtos para sono.',
+      products: [],
+    };
+  }
+
+  const shown = new Set(shownProductSlugs);
+  const recentUserContext = history
+    .filter((message) => message.role === 'user')
+    .slice(-4)
+    .map((message) => message.content)
+    .join(' ');
+  const maxPrice = fallbackBudget(recentUserContext);
+  const inStockOnly = fallbackStockOnly(recentUserContext);
+
+  const load = async (stockOnly: boolean) => {
+    const groups = await Promise.all(
+      categories.map((category) =>
+        searchCatalog({
+          category,
+          max_price: maxPrice,
+          in_stock_only: stockOnly,
+          limit: 24,
+        }),
+      ),
+    );
+    return groups.flat();
+  };
+
+  let candidates = await load(inStockOnly);
+  if (!candidates.length && inStockOnly) candidates = await load(false);
+
+  const remaining = [
+    ...new Map(
+      candidates
+        .filter((product) => !shown.has(product.slug))
+        .map((product) => [product.slug, product]),
+    ).values(),
+  ];
+
+  const products = remaining.slice(0, 3);
+  const hasMore = remaining.length > products.length;
+
+  if (!products.length) {
+    return {
+      reply:
+        'Por enquanto, essas eram as opções dessa categoria que eu tinha para te mostrar. Se quiser, posso comparar as anteriores ou procurar outra categoria/faixa de preço.',
+      products: [],
+    };
+  }
+
+  const label =
+    categories.length === 1
+      ? categoryDisplayName(categories[0])
+      : 'produtos relacionados ao seu objetivo';
+
+  const intro = `Claro! Aqui vão mais ${label}, sem repetir os que já mostrei.`;
+  return {
+    reply: buildNeutralCatalogList(intro, products, hasMore),
+    products,
+  };
 }
 
 function fallbackCategories(text: string): string[] {
@@ -826,7 +1008,7 @@ async function buildCatalogFallback(
         category,
         max_price: maxPrice,
         in_stock_only: inStockOnly,
-        limit: categories.length > 1 ? 1 : 3,
+        limit: categories.length > 1 ? 2 : 4,
       }),
     ),
   );
@@ -841,14 +1023,16 @@ async function buildCatalogFallback(
           category,
           max_price: maxPrice,
           in_stock_only: false,
-          limit: categories.length > 1 ? 1 : 3,
+          limit: categories.length > 1 ? 2 : 4,
         }),
       ),
     );
     products = orderGroups.flat();
   }
 
-  const uniqueProducts = [...new Map(products.map((product) => [product.slug, product])).values()].slice(0, 3);
+  const allUniqueProducts = [...new Map(products.map((product) => [product.slug, product])).values()];
+  const uniqueProducts = allUniqueProducts.slice(0, 3);
+  const hasMore = allUniqueProducts.length > uniqueProducts.length;
   if (!uniqueProducts.length) {
     return {
       reply:
@@ -874,7 +1058,7 @@ async function buildCatalogFallback(
       'Encontrei opções para você, incluindo pronta entrega e produtos disponíveis por encomenda. Confira o status em cada card abaixo.';
   }
 
-  return { reply, products: uniqueProducts };
+  return { reply: appendMoreOptionsOffer(reply, hasMore), products: uniqueProducts };
 }
 
 export async function POST(request: NextRequest) {
@@ -888,8 +1072,16 @@ export async function POST(request: NextRequest) {
   let history: AssistantHistoryMessage[] = [];
 
   try {
-    const body = (await request.json()) as { messages?: unknown };
+    const body = (await request.json()) as {
+      messages?: unknown;
+      shownProductSlugs?: unknown;
+      lastRecommendationCategories?: unknown;
+    };
     history = sanitizeHistory(body.messages);
+    const shownProductSlugs = sanitizeShownProductSlugs(body.shownProductSlugs);
+    const lastRecommendationCategories = sanitizeRecommendationCategories(
+      body.lastRecommendationCategories,
+    );
 
     if (!history.length || history.at(-1)?.role !== 'user') {
       return NextResponse.json({ error: 'Mensagem inválida.' }, { status: 400 });
@@ -904,9 +1096,21 @@ export async function POST(request: NextRequest) {
     // Vitaminas/minerais e sono têm uma política determinística antes do LLM.
     // Assim o mascote não transforma sintomas em diagnóstico, não inventa
     // benefícios e só mostra produtos que realmente existem no Supabase.
-    const vitaminWellnessResponse = await buildVitaminWellnessResponse(history);
+    const vitaminWellnessResponse = await buildVitaminWellnessResponse(
+      history,
+      shownProductSlugs,
+    );
     if (vitaminWellnessResponse) {
       return NextResponse.json(vitaminWellnessResponse);
+    }
+
+    const moreProductsResponse = await buildMoreProductsResponse(
+      history,
+      shownProductSlugs,
+      lastRecommendationCategories,
+    );
+    if (moreProductsResponse) {
+      return NextResponse.json(moreProductsResponse);
     }
 
     const input: unknown[] = history.map((message) => ({
@@ -928,7 +1132,11 @@ export async function POST(request: NextRequest) {
         toolCalls.map(async (call) => {
           const parsedArgs = parseToolArgs(call.arguments);
           const args = applyRecommendationPolicy(parsedArgs, lastUserMessage, recentContext);
-          let products = await searchCatalog(args);
+          const broadSearchArgs = {
+            ...args,
+            limit: Math.max(4, Math.min(12, Math.floor(args.limit ?? 3) + 1)),
+          };
+          let products = await searchCatalog(broadSearchArgs);
           let orderFallbackUsed = false;
 
           // Se o cliente pediu pronta entrega e não há estoque imediato, não encerramos
@@ -936,19 +1144,21 @@ export async function POST(request: NextRequest) {
           // por encomenda para que o mascote possa oferecer uma alternativa real.
           if (products.length === 0 && args.in_stock_only === true) {
             products = await searchCatalog({
-              ...args,
+              ...broadSearchArgs,
               in_stock_only: false,
             });
             orderFallbackUsed = products.length > 0;
           }
 
           products = filterRecommendationsForIntent(products, lastUserMessage, recentContext);
-          products.forEach((product) => recommendations.set(product.slug, product));
+          const visibleProducts = products.slice(0, 3);
+          const hasMoreOptions = products.length > visibleProducts.length;
+          visibleProducts.forEach((product) => recommendations.set(product.slug, product));
 
-          const readyCount = products.filter((product) =>
+          const readyCount = visibleProducts.filter((product) =>
             product.variants.some((variant) => variant.stock > 0),
           ).length;
-          const orderOnlyCount = products.filter((product) =>
+          const orderOnlyCount = visibleProducts.filter((product) =>
             product.variants.length > 0 && product.variants.every((variant) => variant.stock <= 0),
           ).length;
 
@@ -956,7 +1166,8 @@ export async function POST(request: NextRequest) {
             type: 'function_call_output',
             call_id: call.call_id,
             output: JSON.stringify({
-              found: products.length,
+              found: visibleProducts.length,
+              more_options_available: hasMoreOptions,
               ready_stock_found: readyCount,
               order_only_found: orderOnlyCount,
               order_fallback_used: orderFallbackUsed,
@@ -967,7 +1178,7 @@ export async function POST(request: NextRequest) {
                   : orderOnlyCount > 0
                     ? 'Há opções de pronta entrega e também por encomenda. Informe o status correto de cada opção quando for relevante.'
                     : 'As opções encontradas possuem pronta entrega.',
-              products: products.map((product) => ({
+              products: visibleProducts.map((product) => ({
                 slug: product.slug,
                 name: product.name,
                 brand: product.brand,
@@ -1031,7 +1242,7 @@ export async function POST(request: NextRequest) {
           category: 'termogenicos e energia',
           in_stock_only: false,
           max_price: fallbackBudget(lastUserMessage),
-          limit: 3,
+          limit: 4,
         });
       }
 
@@ -1040,8 +1251,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const modelReply = extractText(response) ||
+    let hasMoreGroundedOptions = false;
+    if (groundedProducts.length === 3) {
+      const categories = [...new Set(groundedProducts.map((product) => normalizeFallbackText(product.category)))];
+      if (categories.length === 1) {
+        const categoryCandidates = await searchCatalog({
+          category: categories[0],
+          max_price: fallbackBudget(lastUserMessage),
+          in_stock_only: fallbackStockOnly(lastUserMessage),
+          limit: 4,
+        });
+        hasMoreGroundedOptions = categoryCandidates.length > groundedProducts.length;
+      }
+    }
+
+    const modelReplyBase = extractText(response) ||
       'Consegui consultar o catálogo, mas não consegui montar a resposta agora. Tente perguntar de outra forma.';
+    const modelReply = appendMoreOptionsOffer(modelReplyBase, hasMoreGroundedOptions);
 
     // Em objetivo de emagrecimento, a resposta final é montada a partir dos
     // próprios produtos retornados pelo Supabase. Isso impede alucinações como

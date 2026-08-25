@@ -474,6 +474,8 @@ function ProductCardItem({
   const shouldShowCompareAt = discountPercent !== null;
   const displayCategory = getCatalogCategory(product);
   const displayBadge = getCatalogBadge(product);
+  const displayDescription =
+    product.description?.trim() || 'Veja detalhes, opções e disponibilidade deste produto.';
 
   return (
     <article
@@ -527,7 +529,7 @@ function ProductCardItem({
           <span className="product-card__brand">{product.brand}</span>
         </div>
         <h3 className="product-card__name">{product.name}</h3>
-        <p className="product-card__description">{product.description}</p>
+        <p className="product-card__description">{displayDescription}</p>
       </div>
 
       <div className="product-card__footer">
