@@ -46,6 +46,54 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value?.trim())).map((value) => value.trim()))];
 }
 
+// Alias de busca para tipos comerciais que nem sempre aparecem no nome do produto.
+// Isso evita que "whey concentrado" encontre apenas produtos que tenham literalmente
+// a palavra "Concentrado" no título.
+const PRODUCT_SEARCH_ALIASES: Record<string, string[]> = {
+  'whey-100-pure-dark-wolf': [
+    'whey concentrado',
+    'whey protein concentrado',
+    'wpc',
+    'proteina concentrada do soro do leite',
+  ],
+  'whey-100-pure-ramon-dino-max-titanium': [
+    'whey concentrado',
+    'whey protein concentrado',
+    'wpc',
+    'proteina concentrada do soro do leite',
+  ],
+  'whey-100-pure-tradicional-max-titanium': [
+    'whey concentrado',
+    'whey protein concentrado',
+    'wpc',
+    'proteina concentrada do soro do leite',
+  ],
+  'whey-100-pure-probiotica': [
+    'whey concentrado',
+    'whey protein concentrado',
+    'wpc',
+    'proteina concentrada do soro do leite',
+  ],
+  'whey-100-pure-integralmedica': [
+    'whey concentrado',
+    'whey protein concentrado',
+    'wpc',
+    'proteina concentrada do soro do leite',
+  ],
+  'whey-concentrado-dux': [
+    'whey concentrado',
+    'whey protein concentrado',
+    'wpc',
+    'proteina concentrada do soro do leite',
+  ],
+};
+
+function searchTermMatches(blob: string, term: string): boolean {
+  // "concentrado", "concentrada" e "concentrados" devem representar a mesma intenção.
+  if (term.startsWith('concentrad')) return blob.includes('concentrad');
+  return blob.includes(term);
+}
+
 function commercialPriority(product: AssistantProductRecommendation): number {
   const slug = normalizeText(product.slug);
   const brand = normalizeText(product.brand);
@@ -138,11 +186,16 @@ export async function searchCatalog(
         : uniqueStrings(product.benefits ?? []);
       const catalogFacts = uniqueStrings(officialKnowledge?.facts ?? []);
       const catalogTags = uniqueStrings(officialKnowledge?.tags ?? []);
-      const activeSkus = (product.skus_variacoes ?? []).filter((sku) => sku.available);
+      const rawSkus = product.skus_variacoes ?? [];
+      const activeSkus = rawSkus.filter((sku) => sku.available);
       const eligibleSkus = inStockOnly
         ? activeSkus.filter((sku) => sku.stock > 0)
         : activeSkus;
 
+      // Se o produto possui SKUs cadastrados, mas todos estão desativados,
+      // ele não deve ser oferecido pelo Nix. Produtos sem SKU (ex.: acessório
+      // simples com preço-base) continuam podendo aparecer.
+      if (rawSkus.length > 0 && activeSkus.length === 0) return null;
       if (activeSkus.length > 0 && eligibleSkus.length === 0) return null;
 
       const allPrices = (eligibleSkus.length ? eligibleSkus : activeSkus).map(
@@ -165,9 +218,12 @@ export async function searchCatalog(
         ...catalogTags,
       ].filter(Boolean).join(' '));
 
+      const searchAliases = PRODUCT_SEARCH_ALIASES[product.slug] ?? [];
+
       const searchBlob = normalizeText([
         evidenceBlob,
         displayCategory,
+        ...searchAliases,
         ...activeSkus.flatMap((sku) => [
           relationName(sku.sabores),
           relationName(sku.tamanhos),
@@ -179,12 +235,12 @@ export async function searchCatalog(
 
       if (q) {
         const terms = q.split(/\s+/).filter(Boolean);
-        if (!terms.every((term) => searchBlob.includes(term))) return null;
+        if (!terms.every((term) => searchTermMatches(searchBlob, term))) return null;
       }
 
       if (evidenceQuery) {
         const evidenceTerms = evidenceQuery.split(/\s+/).filter(Boolean);
-        if (!evidenceTerms.every((term) => evidenceBlob.includes(term))) return null;
+        if (!evidenceTerms.every((term) => searchTermMatches(evidenceBlob, term))) return null;
       }
 
       const sortedSkus = [...activeSkus].sort((a, b) => {

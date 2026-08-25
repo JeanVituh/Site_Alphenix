@@ -315,7 +315,7 @@ function fallbackBudget(text: string): number | null {
   const normalized = normalizeFallbackText(text);
   const moneyMatch = normalized.match(/r\$\s*(\d{1,4}(?:[.,]\d{1,2})?)/i);
   const budgetMatch = normalized.match(
-    /(?:ate|maximo|max|orcamento|tenho|gastar)\s+(?:de\s+)?(?:r\$\s*)?(\d{1,4}(?:[.,]\d{1,2})?)/i,
+    /(?:ate|no maximo|maximo|max|orcamento|tenho|gastar|por menos de|menos de|abaixo de|por ate)\s+(?:de\s+)?(?:r\$\s*)?(\d{1,4}(?:[.,]\d{1,2})?)/i,
   );
   const raw = moneyMatch?.[1] ?? budgetMatch?.[1];
   if (!raw) return null;
@@ -325,7 +325,26 @@ function fallbackBudget(text: string): number | null {
 
 function fallbackStockOnly(text: string): boolean {
   const normalized = normalizeFallbackText(text);
-  return /pronta entrega|em estoque|estoque imediato|entrega hoje|preciso hoje/.test(normalized);
+  return /pronta entrega|em estoque|estoque imediato|entrega hoje|preciso hoje|disponivel agora|para hoje|pra hoje/.test(normalized);
+}
+
+function hasConcentratedWheyIntent(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return (
+    /whey[^.!?\n]{0,40}concentrad/.test(normalized) ||
+    /concentrad[^.!?\n]{0,40}whey/.test(normalized) ||
+    /\bwpc\b/.test(normalized)
+  );
+}
+
+function concentratedWheyBrandQuery(text: string): string | null {
+  const normalized = normalizeFallbackText(text);
+  if (/dark wolf/.test(normalized)) return 'dark wolf whey concentrado';
+  if (/integralmedica|integral medica/.test(normalized)) return 'integralmedica whey concentrado';
+  if (/probiotica/.test(normalized)) return 'probiotica whey concentrado';
+  if (/max titanium|ramon dino/.test(normalized)) return 'max titanium whey concentrado';
+  if (/\bdux\b/.test(normalized)) return 'dux whey concentrado';
+  return null;
 }
 
 function fallbackHasHealthContext(text: string): boolean {
@@ -368,35 +387,51 @@ function applyRecommendationPolicy(
   args: ReturnType<typeof parseToolArgs>,
   lastUserMessage: string,
   recentContext: string,
+  recentUserContext: string,
 ): ReturnType<typeof parseToolArgs> {
+  const userBudget =
+    fallbackBudget(lastUserMessage) ?? fallbackBudget(recentUserContext);
+  const userAskedReadyStock = fallbackStockOnly(lastUserMessage);
+
+  let safeArgs: ReturnType<typeof parseToolArgs> = {
+    ...args,
+    // O mascote não pode transformar uma busca comum em "somente pronta entrega".
+    // Só aplicamos esse filtro quando o próprio cliente pediu isso explicitamente.
+    in_stock_only: userAskedReadyStock,
+  };
+
+  if (userBudget !== null) {
+    safeArgs = { ...safeArgs, max_price: userBudget };
+  }
+
   const weightLoss = hasWeightLossIntent(recentContext);
-  if (!weightLoss) return args;
+  if (!weightLoss) return safeArgs;
 
   // Em emagrecimento, hipercalórico não é uma sugestão coerente por padrão.
   // Só respeitamos essa categoria se o próprio cliente a pedir explicitamente.
-  if (args.category === 'hipercaloricos' && !explicitlyRequestsHypercaloric(lastUserMessage)) {
-    return { ...args, query: null, category: 'termogenicos e energia' };
+  if (safeArgs.category === 'hipercaloricos' && !explicitlyRequestsHypercaloric(lastUserMessage)) {
+    return { ...safeArgs, query: null, category: 'termogenicos e energia' };
   }
 
   // Pré-treino também não é o padrão para emagrecimento. Só entra quando
   // a pessoa pediu especificamente energia/desempenho/pré-treino.
-  if (args.category === 'pre-treino' && !explicitlyRequestsPreWorkout(lastUserMessage)) {
-    return { ...args, query: null, category: 'termogenicos e energia' };
+  if (safeArgs.category === 'pre-treino' && !explicitlyRequestsPreWorkout(lastUserMessage)) {
+    return { ...safeArgs, query: null, category: 'termogenicos e energia' };
   }
 
   // Em uma pergunta ampla como "quero emagrecer, o que recomenda?", a
   // busca principal deve ser pelos termogênicos reais da loja. Se a pessoa
   // pediu whey/proteína explicitamente, preservamos a categoria de proteínas.
   if (
-    !args.category &&
+    !safeArgs.category &&
     !explicitlyRequestsProtein(lastUserMessage) &&
     !explicitlyRequestsPreWorkout(lastUserMessage) &&
     !explicitlyRequestsHypercaloric(lastUserMessage)
   ) {
-    return { ...args, query: null, category: 'termogenicos e energia' };
+    return { ...safeArgs, query: null, category: 'termogenicos e energia' };
   }
 
-  return args;
+  return safeArgs;
 }
 
 function filterRecommendationsForIntent(
@@ -906,7 +941,19 @@ async function buildMoreProductsResponse(
   const maxPrice = fallbackBudget(recentUserContext);
   const inStockOnly = fallbackStockOnly(recentUserContext);
 
+  const concentratedWheyContext = hasConcentratedWheyIntent(recentUserContext);
+
   const load = async (stockOnly: boolean) => {
+    if (concentratedWheyContext && categories.includes('proteinas')) {
+      return searchCatalog({
+        query: 'whey concentrado',
+        category: 'proteinas',
+        max_price: maxPrice,
+        in_stock_only: stockOnly,
+        limit: 24,
+      });
+    }
+
     const groups = await Promise.all(
       categories.map((category) =>
         searchCatalog({
@@ -948,6 +995,82 @@ async function buildMoreProductsResponse(
       : 'produtos relacionados ao seu objetivo';
 
   const intro = `Claro! Aqui vão mais ${label}, sem repetir os que já mostrei.`;
+  return {
+    reply: buildNeutralCatalogList(intro, products, hasMore),
+    products,
+  };
+}
+
+
+async function buildConcentratedWheyResponse(
+  history: AssistantHistoryMessage[],
+): Promise<AssistantApiResponse | null> {
+  const lastUserMessage =
+    [...history].reverse().find((message) => message.role === 'user')?.content ?? '';
+  if (!lastUserMessage) return null;
+
+  const recentUserContext = history
+    .filter((message) => message.role === 'user')
+    .slice(-4)
+    .map((message) => message.content)
+    .join(' ');
+
+  // Um pedido atual por isolado substitui o contexto anterior de concentrado.
+  if (/isolad/.test(normalizeFallbackText(lastUserMessage))) return null;
+  if (!hasConcentratedWheyIntent(recentUserContext)) return null;
+
+  const maxPrice =
+    fallbackBudget(lastUserMessage) ?? fallbackBudget(recentUserContext);
+  const inStockOnly = fallbackStockOnly(lastUserMessage);
+  const brandQuery = concentratedWheyBrandQuery(lastUserMessage);
+  const query = brandQuery ?? 'whey concentrado';
+
+  let allProducts = await searchCatalog({
+    query,
+    category: 'proteinas',
+    max_price: maxPrice,
+    in_stock_only: inStockOnly,
+    limit: 24,
+  });
+
+  let usedOrderFallback = false;
+  if (!allProducts.length && inStockOnly) {
+    allProducts = await searchCatalog({
+      query,
+      category: 'proteinas',
+      max_price: maxPrice,
+      in_stock_only: false,
+      limit: 24,
+    });
+    usedOrderFallback = allProducts.length > 0;
+  }
+
+  const products = allProducts.slice(0, 3);
+  const hasMore = allProducts.length > products.length;
+
+  if (!products.length) {
+    const budgetText = maxPrice !== null ? ` até ${formatBRL(maxPrice)}` : '';
+    return {
+      reply:
+        `Não encontrei whey concentrado${budgetText} com esse filtro agora. ` +
+        'Se quiser, posso ampliar a faixa de preço ou mostrar outras opções de whey.',
+      products: [],
+    };
+  }
+
+  let intro: string;
+  if (brandQuery && /dark wolf/.test(normalizeFallbackText(lastUserMessage))) {
+    intro =
+      'Sim. O Whey 100% Pure da Dark Wolf também entra nas opções de whey concentrado. Separei ele para você.';
+  } else if (usedOrderFallback) {
+    intro =
+      'Não encontrei whey concentrado em pronta entrega com esse filtro, mas há opções disponíveis por encomenda.';
+  } else if (maxPrice !== null) {
+    intro = `Separei os wheys concentrados que cabem no seu limite de até ${formatBRL(maxPrice)}.`;
+  } else {
+    intro = 'Separei algumas opções de whey concentrado da Alphenix.';
+  }
+
   return {
     reply: buildNeutralCatalogList(intro, products, hasMore),
     products,
@@ -1092,6 +1215,11 @@ export async function POST(request: NextRequest) {
       .slice(-6)
       .map((message) => message.content)
       .join(' ');
+    const recentUserContext = history
+      .filter((message) => message.role === 'user')
+      .slice(-4)
+      .map((message) => message.content)
+      .join(' ');
 
     // Vitaminas/minerais e sono têm uma política determinística antes do LLM.
     // Assim o mascote não transforma sintomas em diagnóstico, não inventa
@@ -1102,6 +1230,11 @@ export async function POST(request: NextRequest) {
     );
     if (vitaminWellnessResponse) {
       return NextResponse.json(vitaminWellnessResponse);
+    }
+
+    const concentratedWheyResponse = await buildConcentratedWheyResponse(history);
+    if (concentratedWheyResponse) {
+      return NextResponse.json(concentratedWheyResponse);
     }
 
     const moreProductsResponse = await buildMoreProductsResponse(
@@ -1131,7 +1264,12 @@ export async function POST(request: NextRequest) {
       const toolOutputs = await Promise.all(
         toolCalls.map(async (call) => {
           const parsedArgs = parseToolArgs(call.arguments);
-          const args = applyRecommendationPolicy(parsedArgs, lastUserMessage, recentContext);
+          const args = applyRecommendationPolicy(
+            parsedArgs,
+            lastUserMessage,
+            recentContext,
+            recentUserContext,
+          );
           const broadSearchArgs = {
             ...args,
             limit: Math.max(4, Math.min(12, Math.floor(args.limit ?? 3) + 1)),
