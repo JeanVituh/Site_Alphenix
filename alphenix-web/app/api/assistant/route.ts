@@ -11,9 +11,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/responses';
-const MAX_HISTORY = 12;
-const MAX_MESSAGE_LENGTH = 700;
-const MAX_TOOL_ROUNDS = 3;
+const MAX_HISTORY = 8;
+const MAX_MESSAGE_LENGTH = 500;
+const MAX_TOOL_ROUNDS = 2;
 
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -83,6 +83,16 @@ type GroqResponsePayload = {
   error?: { message?: string } | null;
 };
 
+class GroqRateLimitError extends Error {
+  retryAfterSeconds: number | null;
+
+  constructor(retryAfterSeconds: number | null) {
+    super('GROQ_RATE_LIMIT');
+    this.name = 'GroqRateLimitError';
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 function getClientKey(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   return forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'anonymous';
@@ -145,7 +155,10 @@ function extractText(response: GroqResponsePayload): string {
   return cleanPlainTextReply(chunks.join('\n'));
 }
 
-async function callGroq(input: unknown[]): Promise<GroqResponsePayload> {
+async function callGroq(
+  input: unknown[],
+  allowShortRetry = true,
+): Promise<GroqResponsePayload> {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) {
     throw new Error('GROQ_API_KEY_NOT_CONFIGURED');
@@ -168,7 +181,8 @@ async function callGroq(input: unknown[]): Promise<GroqResponsePayload> {
       // GPT-OSS 20B suporta tool calling, mas não chamadas locais paralelas.
       parallel_tool_calls: false,
       reasoning: { effort: 'low' },
-      max_output_tokens: 550,
+      // Respostas curtas reduzem bastante o consumo do Free Tier.
+      max_output_tokens: 350,
     }),
     signal: AbortSignal.timeout(25_000),
   });
@@ -177,7 +191,28 @@ async function callGroq(input: unknown[]): Promise<GroqResponsePayload> {
 
   if (!response.ok) {
     if (response.status === 429) {
-      throw new Error('GROQ_RATE_LIMIT');
+      const retryHeader = response.headers.get('retry-after');
+      const parsedRetry = retryHeader ? Number.parseFloat(retryHeader) : Number.NaN;
+      const retryAfterSeconds = Number.isFinite(parsedRetry)
+        ? Math.max(1, Math.ceil(parsedRetry))
+        : null;
+
+      console.warn('[Alphenix Assistant] Groq 429', {
+        retryAfterSeconds,
+        remainingRequests: response.headers.get('x-ratelimit-remaining-requests'),
+        remainingTokens: response.headers.get('x-ratelimit-remaining-tokens'),
+        resetRequests: response.headers.get('x-ratelimit-reset-requests'),
+        resetTokens: response.headers.get('x-ratelimit-reset-tokens'),
+      });
+
+      // Quando for apenas um pico muito curto, esperamos uma única vez.
+      // Para limites maiores (TPM/TPD/RPD), caímos imediatamente no modo catálogo.
+      if (allowShortRetry && retryAfterSeconds !== null && retryAfterSeconds <= 2) {
+        await new Promise((resolve) => setTimeout(resolve, retryAfterSeconds * 1000 + 150));
+        return callGroq(input, false);
+      }
+
+      throw new GroqRateLimitError(retryAfterSeconds);
     }
     throw new Error(payload.error?.message || `Groq HTTP ${response.status}`);
   }
@@ -201,6 +236,142 @@ function parseToolArgs(raw: string | undefined): {
   }
 }
 
+function normalizeFallbackText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function fallbackBudget(text: string): number | null {
+  const normalized = normalizeFallbackText(text);
+  const moneyMatch = normalized.match(/r\$\s*(\d{1,4}(?:[.,]\d{1,2})?)/i);
+  const budgetMatch = normalized.match(
+    /(?:ate|maximo|max|orcamento|tenho|gastar)\s+(?:de\s+)?(?:r\$\s*)?(\d{1,4}(?:[.,]\d{1,2})?)/i,
+  );
+  const raw = moneyMatch?.[1] ?? budgetMatch?.[1];
+  if (!raw) return null;
+  const parsed = Number.parseFloat(raw.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function fallbackStockOnly(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /pronta entrega|em estoque|estoque imediato|entrega hoje|preciso hoje/.test(normalized);
+}
+
+function fallbackHasHealthContext(text: string): boolean {
+  const normalized = normalizeFallbackText(text);
+  return /gravidez|gravida|amament|pressao alta|hipertens|cardiac|coracao|medicamento|remedio|reacao adversa|doenca|menor de idade/.test(
+    normalized,
+  );
+}
+
+function fallbackCategories(text: string): string[] {
+  const normalized = normalizeFallbackText(text);
+
+  if (/creatina/.test(normalized)) return ['creatinas'];
+  if (/whey|proteina/.test(normalized)) return ['proteinas'];
+  if (/termogen|queimar gordura|perder gordura|emagrec|definicao/.test(normalized)) {
+    return ['termogenicos e energia'];
+  }
+  if (/pre[- ]?treino|energia no treino|disposicao|estimulante/.test(normalized)) {
+    return ['pre-treino'];
+  }
+  if (/hipercalor|ganhar peso/.test(normalized)) return ['hipercaloricos'];
+  if (/ganhar massa|massa muscular|hipertrofia/.test(normalized)) {
+    return ['creatinas', 'proteinas', 'hipercaloricos'];
+  }
+  if (/vitamina|mineral/.test(normalized)) return ['vitaminas e minerais'];
+  if (/sono|dormir|bem estar/.test(normalized)) return ['bem-estar e sono'];
+
+  return [];
+}
+
+async function buildCatalogFallback(
+  history: AssistantHistoryMessage[],
+): Promise<AssistantApiResponse | null> {
+  const lastUserMessage = [...history].reverse().find((message) => message.role === 'user')?.content ?? '';
+  if (!lastUserMessage) return null;
+
+  // Usa também o contexto recente para entender respostas curtas como
+  // "custo-benefício", "até 150" ou "pode ser por encomenda".
+  const recentContext = history
+    .slice(-6)
+    .map((message) => message.content)
+    .join(' ');
+
+  if (fallbackHasHealthContext(recentContext)) {
+    return {
+      reply:
+        'Sua dúvida envolve saúde ou uma restrição importante. Para não te orientar de forma incompleta, prefiro não recomendar um suplemento específico agora. Tente novamente em alguns instantes ou converse com um médico/nutricionista.',
+      products: [],
+    };
+  }
+
+  const categories = fallbackCategories(recentContext);
+  if (!categories.length) return null;
+
+  const maxPrice = fallbackBudget(lastUserMessage);
+  const inStockOnly = fallbackStockOnly(lastUserMessage);
+
+  const groups = await Promise.all(
+    categories.map((category) =>
+      searchCatalog({
+        category,
+        max_price: maxPrice,
+        in_stock_only: inStockOnly,
+        limit: categories.length > 1 ? 1 : 3,
+      }),
+    ),
+  );
+
+  let products = groups.flat();
+
+  // Se a pessoa exigiu pronta entrega e não houver nada, ainda oferecemos encomenda.
+  if (products.length === 0 && inStockOnly) {
+    const orderGroups = await Promise.all(
+      categories.map((category) =>
+        searchCatalog({
+          category,
+          max_price: maxPrice,
+          in_stock_only: false,
+          limit: categories.length > 1 ? 1 : 3,
+        }),
+      ),
+    );
+    products = orderGroups.flat();
+  }
+
+  const uniqueProducts = [...new Map(products.map((product) => [product.slug, product])).values()].slice(0, 3);
+  if (!uniqueProducts.length) {
+    return {
+      reply:
+        'Não encontrei uma opção compatível com esse pedido no catálogo agora. Se quiser, tente outra faixa de preço ou outra categoria.',
+      products: [],
+    };
+  }
+
+  const readyCount = uniqueProducts.filter((product) =>
+    product.variants.some((variant) => variant.stock > 0),
+  ).length;
+  const orderOnlyCount = uniqueProducts.filter(
+    (product) =>
+      product.variants.length > 0 && product.variants.every((variant) => variant.stock <= 0),
+  ).length;
+
+  let reply = 'Separei algumas opções do catálogo que combinam com o que você pediu. Veja os cards abaixo e escolha a variação que preferir.';
+  if (readyCount === 0 && orderOnlyCount > 0) {
+    reply =
+      'No momento não encontrei pronta entrega para esse pedido, mas há opções disponíveis por encomenda. Separei algumas abaixo para você.';
+  } else if (orderOnlyCount > 0) {
+    reply =
+      'Encontrei opções para você, incluindo pronta entrega e produtos disponíveis por encomenda. Confira o status em cada card abaixo.';
+  }
+
+  return { reply, products: uniqueProducts };
+}
+
 export async function POST(request: NextRequest) {
   if (!rateLimit(getClientKey(request))) {
     return NextResponse.json(
@@ -209,9 +380,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let history: AssistantHistoryMessage[] = [];
+
   try {
     const body = (await request.json()) as { messages?: unknown };
-    const history = sanitizeHistory(body.messages);
+    history = sanitizeHistory(body.messages);
 
     if (!history.length || history.at(-1)?.role !== 'user') {
       return NextResponse.json({ error: 'Mensagem inválida.' }, { status: 400 });
@@ -284,8 +457,8 @@ export async function POST(request: NextRequest) {
                 has_order_option: product.variants.some(
                   (variant) => variant.available && variant.stock <= 0,
                 ),
-                benefits: product.benefits,
-                variants: product.variants.slice(0, 8).map((variant) => ({
+                benefits: product.benefits.slice(0, 3),
+                variants: product.variants.slice(0, 4).map((variant) => ({
                   label: variant.label,
                   price: variant.price,
                   stock: variant.stock,
@@ -323,11 +496,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (error instanceof Error && error.message === 'GROQ_RATE_LIMIT') {
+    if (error instanceof GroqRateLimitError) {
+      try {
+        const fallback = await buildCatalogFallback(history);
+        if (fallback) {
+          return NextResponse.json(fallback);
+        }
+      } catch (fallbackError) {
+        console.error('[Alphenix Assistant] fallback de catálogo falhou', fallbackError);
+      }
+
+      const wait = error.retryAfterSeconds;
       return NextResponse.json(
         {
-          error:
-            'O assistente atingiu temporariamente o limite de uso da Groq. Aguarde um pouco e tente novamente.',
+          error: wait
+            ? `A IA está com muita demanda agora. Tente novamente em cerca de ${wait} segundos.`
+            : 'A IA está com muita demanda agora. Aguarde um pouco e tente novamente.',
         },
         { status: 429 },
       );
